@@ -17,7 +17,7 @@ const API = {
   executions: 'http://localhost:5678/webhook/giaothoi-automation-executions',
   schedules: 'http://localhost:5678/webhook/giaothoi-schedules',
   control: 'http://localhost:5678/webhook/giaothoi-automation-control',
-    run: 'http://localhost:5678/webhook/giaothoi-automation-run',
+  run: 'http://localhost:5678/webhook/giaothoi-automation-run',
 };
 
 type WorkflowItem = {
@@ -197,51 +197,45 @@ export default function AutomationCenter() {
     }
   };
   
-const runTestWorkflow = async () => {
-  const confirmed = window.confirm(
-    'Bạn có muốn chạy workflow kiểm thử GIAO THỜI - Test Manual Run không?'
-  );
+  const runTestWorkflow = async () => {
+    const confirmed = window.confirm(
+      'Bạn có muốn chạy workflow kiểm thử GIAO THỜI - Test Manual Run không?'
+    );
+    if (!confirmed) return;
 
-  if (!confirmed) return;
+    setRunLoading(true);
+    setError('');
+    setNotice('');
 
-  setRunLoading(true);
-  setError('');
-  setNotice('');
+    try {
+      const response = await fetch(API.run, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ workflowId: 'TEST' }),
+      });
 
-  try {
-    const response = await fetch(API.run, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        workflowId: 'TEST',
-      }),
-    });
+      const result = await response.json();
 
-    const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || `Run API lỗi HTTP ${response.status}`);
+      }
 
-    if (!response.ok || !result.success) {
-      throw new Error(
-        result.message || `Run API lỗi HTTP ${response.status}`
+      await loadData();
+      setNotice(
+        `Chạy thử thành công: ${result.message}. Dữ liệu nhận được: ${result.testInput}`
       );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể chạy workflow kiểm thử.'
+      );
+    } finally {
+      setRunLoading(false);
     }
-
-    await loadData();
-
-    setNotice(
-      `Chạy thử thành công: ${result.message}. Dữ liệu nhận được: ${result.testInput}`
-    );
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : 'Không thể chạy workflow kiểm thử.'
-    );
-  } finally {
-    setRunLoading(false);
-  }
-};
+  };
 
 
   const activeCount = workflows.filter(item => item.active).length;
