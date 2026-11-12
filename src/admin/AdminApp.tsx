@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -16,6 +17,11 @@ import {
   Sparkles,
   CircleHelp,
   PanelLeftClose,
+  RefreshCw,
+  Users,
+  Eye,
+  MousePointerClick,
+  Activity,
 } from 'lucide-react';
 
 type AdminPage =
@@ -50,12 +56,123 @@ const pageDescriptions: Record<AdminPage, string> = {
   settings: 'Quản lý kết nối dữ liệu và cấu hình hệ thống.',
 };
 
+// API tạm thời chạy trên máy tính cá nhân.
+const DASHBOARD_API_URL =
+  'http://localhost:5678/webhook/giaothoi-dashboard';
+
+type DashboardMetrics = {
+  sessions: number;
+  activeUsers: number;
+  newUsers: number;
+  screenPageViews: number;
+  engagedSessions: number;
+  eventCount: number;
+};
+
+type GA4Response = {
+  metricHeaders?: { name: string }[];
+  rows?: { metricValues: { value: string }[] }[];
+};
+
+const emptyMetrics: DashboardMetrics = {
+  sessions: 0,
+  activeUsers: 0,
+  newUsers: 0,
+  screenPageViews: 0,
+  engagedSessions: 0,
+  eventCount: 0,
+};
+
+const formatNumber = (value: number) =>
+  new Intl.NumberFormat('vi-VN').format(value);
+
 const AdminApp: React.FC = () => {
   const [activePage, setActivePage] = useState<AdminPage>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(DASHBOARD_API_URL, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`API trả về lỗi HTTP ${response.status}`);
+      }
+
+      const data: GA4Response = await response.json();
+
+      if (!data.metricHeaders) {
+        throw new Error('Dữ liệu GA4 không có metricHeaders.');
+      }
+
+      const values = data.rows?.[0]?.metricValues ?? [];
+      const result = { ...emptyMetrics };
+
+      data.metricHeaders.forEach((header, index) => {
+        const key = header.name as keyof DashboardMetrics;
+        if (key in result) {
+          result[key] = Number(values[index]?.value ?? 0);
+        }
+      });
+
+      setMetrics(result);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể kết nối đến Dashboard API.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
   const currentPage = navigation.find((item) => item.id === activePage);
   const PageIcon = currentPage?.icon ?? LayoutDashboard;
+
+  const engagementRate =
+    metrics && metrics.sessions > 0
+      ? (metrics.engagedSessions / metrics.sessions) * 100
+      : 0;
+
+  const kpiCards = [
+    {
+      label: 'Sessions',
+      note: 'Tổng số phiên truy cập',
+      value: metrics ? formatNumber(metrics.sessions) : '—',
+      icon: Activity,
+    },
+    {
+      label: 'Active Users',
+      note: 'Người dùng hoạt động',
+      value: metrics ? formatNumber(metrics.activeUsers) : '—',
+      icon: Users,
+    },
+    {
+      label: 'New Users',
+      note: 'Người dùng mới',
+      value: metrics ? formatNumber(metrics.newUsers) : '—',
+      icon: MousePointerClick,
+    },
+    {
+      label: 'Engagement Rate',
+      note: 'Tỷ lệ phiên tương tác',
+      value: metrics ? `${engagementRate.toFixed(1)}%` : '—',
+      icon: ChartNoAxesCombined,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#F6F7F5] text-[#202923] flex">
@@ -65,7 +182,6 @@ const AdminApp: React.FC = () => {
           sidebarOpen ? 'w-[250px]' : 'w-[76px]'
         } shrink-0 bg-[#1F3029] text-white flex flex-col transition-all duration-300`}
       >
-        {/* Brand */}
         <div className="h-[76px] px-5 flex items-center border-b border-white/10">
           <div className="w-9 h-9 rounded-xl bg-[#D5B98C] text-[#1F3029] flex items-center justify-center font-bold text-lg">
             G
@@ -81,7 +197,6 @@ const AdminApp: React.FC = () => {
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 py-6 overflow-y-auto">
           {['OVERVIEW', 'WORKSPACE', 'MANAGEMENT'].map((group) => {
             const items = navigation.filter((item) => item.group === group);
@@ -123,7 +238,6 @@ const AdminApp: React.FC = () => {
           })}
         </nav>
 
-        {/* Sidebar Footer */}
         <div className="p-3 border-t border-white/10">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -137,7 +251,6 @@ const AdminApp: React.FC = () => {
 
       {/* Main Area */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Header */}
         <header className="h-[76px] bg-white border-b border-[#E8EBE7] px-5 md:px-8 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-4 min-w-0">
             <button
@@ -183,7 +296,6 @@ const AdminApp: React.FC = () => {
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 p-5 md:p-8 max-w-[1600px] w-full mx-auto">
           {activePage === 'dashboard' ? (
             <div className="space-y-7">
@@ -201,92 +313,136 @@ const AdminApp: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-white border border-[#E8EBE7] rounded-lg px-3 py-2 text-xs text-[#68736A]">
-                  <CalendarDays size={15} />
-                  Chưa chọn khoảng thời gian
-                  <ChevronDown size={14} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs text-[#89938A]">
+                    7 ngày gần nhất, đến hết hôm qua
+                  </span>
+                  <button
+                    onClick={fetchDashboardData}
+                    disabled={loading}
+                    className="flex items-center gap-2 bg-white border border-[#E8EBE7] rounded-lg px-3 py-2 text-xs text-[#68736A] hover:bg-[#F6F7F5] disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                    {loading ? 'Đang tải...' : 'Làm mới dữ liệu'}
+                  </button>
                 </div>
               </div>
 
-              {/* Connection Notice */}
-              <div className="bg-[#FFF9ED] border border-[#F0E4CA] rounded-xl p-4 flex gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#F3E8D0] flex items-center justify-center shrink-0">
-                  <CircleHelp size={18} className="text-[#9B7842]" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[#70572E]">
-                    Dashboard chưa kết nối dữ liệu
+              {/* Connection Status */}
+              {error ? (
+                <div className="bg-[#FFF1F0] border border-[#F2D0CC] rounded-xl p-4 flex gap-3">
+                  <CircleHelp size={19} className="text-[#B64B40] shrink-0" />
+                  <div>
+                    <div className="text-sm font-semibold text-[#963C33]">
+                      Không thể kết nối Dashboard API
+                    </div>
+                    <p className="text-xs text-[#A65D55] mt-1 break-words">
+                      {error}
+                    </p>
+                    <p className="text-xs text-[#A65D55] mt-2">
+                      Kiểm tra n8n đang chạy và workflow đã được Publish.
+                    </p>
                   </div>
-                  <p className="text-xs text-[#927B56] mt-1 leading-relaxed">
-                    Đây là khung giao diện ban đầu. Các chỉ số sẽ được hiển thị
-                    sau khi tích hợp Admin UI với n8n và GA4 Data API.
-                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-[#EDF6EF] border border-[#D8E9DB] rounded-xl p-4 flex gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-[#DDEEE0] flex items-center justify-center shrink-0">
+                    <Activity size={18} className="text-[#477653]" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-[#376344]">
+                      {loading
+                        ? 'Đang kết nối GA4...'
+                        : metrics
+                          ? 'Đã kết nối GA4 Data API'
+                          : 'Đang chờ dữ liệu GA4'}
+                    </div>
+                    <p className="text-xs text-[#64816A] mt-1 leading-relaxed">
+                      {loading
+                        ? 'Đang tải các chỉ số từ n8n.'
+                        : metrics
+                          ? 'Các chỉ số bên dưới được lấy trực tiếp từ Google Analytics 4.'
+                          : 'Dashboard sẽ hiển thị số liệu sau khi kết nối thành công.'}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {[
-                  { label: 'Sessions', note: 'Tổng số phiên truy cập' },
-                  { label: 'Active Users', note: 'Người dùng hoạt động' },
-                  { label: 'New Users', note: 'Người dùng mới' },
-                  { label: 'Engagement Rate', note: 'Tỷ lệ phiên tương tác' },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="bg-white border border-[#E8EBE7] rounded-xl p-5"
-                  >
-                    <div className="text-xs text-[#89938A]">{item.label}</div>
-                    <div className="text-2xl font-semibold text-[#29372F] mt-4">
-                      —
+                {kpiCards.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <div
+                      key={item.label}
+                      className="bg-white border border-[#E8EBE7] rounded-xl p-5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-[#89938A]">{item.label}</div>
+                        <Icon size={17} className="text-[#9A8769]" />
+                      </div>
+                      <div className="text-2xl font-semibold text-[#29372F] mt-4">
+                        {loading && !metrics ? '...' : item.value}
+                      </div>
+                      <div className="text-[11px] text-[#A0A8A1] mt-2">
+                        {item.note}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-[#A0A8A1] mt-2">
-                      {item.note}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              {/* Chart Placeholders */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                <div className="xl:col-span-2 bg-white border border-[#E8EBE7] rounded-xl p-5 min-h-[280px]">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold">Traffic Trend</h3>
-                      <p className="text-xs text-[#929A93] mt-1">
-                        Xu hướng truy cập theo thời gian
-                      </p>
-                    </div>
-                    <ArrowUpRight size={17} className="text-[#929A93]" />
+              {/* Additional Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border border-[#E8EBE7] rounded-xl p-5">
+                  <div className="flex items-center gap-2">
+                    <Eye size={17} className="text-[#9A8769]" />
+                    <h3 className="text-sm font-semibold">Page Views</h3>
                   </div>
-
-                  <div className="h-[180px] flex items-center justify-center text-xs text-[#A0A8A1]">
-                    Biểu đồ sẽ hiển thị khi có dữ liệu GA4
+                  <div className="text-2xl font-semibold mt-4">
+                    {metrics ? formatNumber(metrics.screenPageViews) : '—'}
                   </div>
-                </div>
-
-                <div className="bg-white border border-[#E8EBE7] rounded-xl p-5 min-h-[280px]">
-                  <h3 className="text-sm font-semibold">Traffic Acquisition</h3>
-                  <p className="text-xs text-[#929A93] mt-1">
-                    Phân bổ theo kênh truy cập
+                  <p className="text-xs text-[#929A93] mt-2">
+                    Tổng lượt xem trang trong kỳ báo cáo
                   </p>
+                </div>
 
-                  <div className="h-[180px] flex items-center justify-center text-xs text-[#A0A8A1] text-center">
-                    Chưa có dữ liệu phân bổ kênh
+                <div className="bg-white border border-[#E8EBE7] rounded-xl p-5">
+                  <div className="flex items-center gap-2">
+                    <MousePointerClick size={17} className="text-[#9A8769]" />
+                    <h3 className="text-sm font-semibold">Event Count</h3>
                   </div>
+                  <div className="text-2xl font-semibold mt-4">
+                    {metrics ? formatNumber(metrics.eventCount) : '—'}
+                  </div>
+                  <p className="text-xs text-[#929A93] mt-2">
+                    Tổng số sự kiện được ghi nhận
+                  </p>
                 </div>
               </div>
 
-              {/* AI Insight Placeholder */}
+              {/* Data Scope */}
+              <div className="bg-white border border-[#E8EBE7] rounded-xl p-5">
+                <h3 className="text-sm font-semibold">Phạm vi dữ liệu hiện tại</h3>
+                <p className="text-xs text-[#929A93] mt-2 leading-relaxed">
+                  Dashboard đang nhận dữ liệu tổng hợp từ GA4 trong 7 ngày gần nhất,
+                  kết thúc vào ngày hôm qua. Phiên bản API hiện tại chưa trả về dữ liệu
+                  phân chia theo ngày hoặc kênh truy cập, nên biểu đồ xu hướng và
+                  phân bổ kênh sẽ được bổ sung ở bước tiếp theo.
+                </p>
+              </div>
+
+              {/* AI Insight */}
               <div className="bg-[#1F3029] text-white rounded-xl p-5 md:p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles size={17} className="text-[#D5B98C]" />
                   <span className="text-sm font-semibold">AI Marketing Insights</span>
                 </div>
                 <p className="text-xs text-white/55 leading-relaxed">
-                  Những insight quan trọng sẽ được tổng hợp từ dữ liệu GA4
-                  sau khi kết nối Agent. AI chỉ đưa ra nhận định dựa trên dữ liệu
-                  thực tế, không tự tạo số liệu.
+                  Khu vực này sẽ tổng hợp nhận định và đề xuất từ AI Agent sau khi
+                  kết nối chức năng phân tích. Hiện tại Dashboard chỉ hiển thị
+                  dữ liệu GA4, chưa tự động tạo insight.
                 </p>
               </div>
             </div>
@@ -306,7 +462,6 @@ const AdminApp: React.FC = () => {
           )}
         </main>
 
-        {/* Footer */}
         <footer className="px-5 md:px-8 py-4 border-t border-[#E8EBE7] bg-white">
           <div className="flex flex-col sm:flex-row justify-between gap-2 text-[11px] text-[#9AA29B]">
             <span>GIAO THỜI Marketing AI</span>
