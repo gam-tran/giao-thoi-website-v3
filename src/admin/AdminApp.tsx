@@ -13,7 +13,6 @@ import {
   Search,
   Menu,
   ChevronDown,
-  ArrowUpRight,
   Sparkles,
   CircleHelp,
   PanelLeftClose,
@@ -22,6 +21,7 @@ import {
   Eye,
   MousePointerClick,
   Activity,
+  TrendingUp,
 } from 'lucide-react';
 
 type AdminPage =
@@ -56,7 +56,6 @@ const pageDescriptions: Record<AdminPage, string> = {
   settings: 'Quản lý kết nối dữ liệu và cấu hình hệ thống.',
 };
 
-// API tạm thời chạy trên máy tính cá nhân.
 const DASHBOARD_API_URL =
   'http://localhost:5678/webhook/giaothoi-dashboard';
 
@@ -69,28 +68,41 @@ type DashboardMetrics = {
   eventCount: number;
 };
 
-type GA4Response = {
-  metricHeaders?: { name: string }[];
-  rows?: { metricValues: { value: string }[] }[];
+type TrafficDay = {
+  date: string;
+  sessions: number;
+  activeUsers: number;
+  screenPageViews: number;
 };
 
-const emptyMetrics: DashboardMetrics = {
-  sessions: 0,
-  activeUsers: 0,
-  newUsers: 0,
-  screenPageViews: 0,
-  engagedSessions: 0,
-  eventCount: 0,
+type AcquisitionChannel = {
+  channel: string;
+  sessions: number;
+  activeUsers: number;
+  engagedSessions: number;
+};
+
+type DashboardResponse = {
+  overview: DashboardMetrics;
+  trafficTrend: TrafficDay[];
+  acquisition: AcquisitionChannel[];
+  dataPeriod?: string;
+  source?: string;
 };
 
 const formatNumber = (value: number) =>
   new Intl.NumberFormat('vi-VN').format(value);
 
+const formatDate = (date: string) => {
+  if (!/^\d{8}$/.test(date)) return date;
+  return `${date.slice(6, 8)}/${date.slice(4, 6)}`;
+};
+
 const AdminApp: React.FC = () => {
   const [activePage, setActivePage] = useState<AdminPage>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -107,23 +119,14 @@ const AdminApp: React.FC = () => {
         throw new Error(`API trả về lỗi HTTP ${response.status}`);
       }
 
-      const data: GA4Response = await response.json();
+      const result: DashboardResponse = await response.json();
 
-      if (!data.metricHeaders) {
-        throw new Error('Dữ liệu GA4 không có metricHeaders.');
+      if (!result.overview || !Array.isArray(result.trafficTrend) ||
+          !Array.isArray(result.acquisition)) {
+        throw new Error('Cấu trúc dữ liệu Dashboard API không hợp lệ.');
       }
 
-      const values = data.rows?.[0]?.metricValues ?? [];
-      const result = { ...emptyMetrics };
-
-      data.metricHeaders.forEach((header, index) => {
-        const key = header.name as keyof DashboardMetrics;
-        if (key in result) {
-          result[key] = Number(values[index]?.value ?? 0);
-        }
-      });
-
-      setMetrics(result);
+      setData(result);
     } catch (err) {
       setError(
         err instanceof Error
@@ -141,6 +144,8 @@ const AdminApp: React.FC = () => {
 
   const currentPage = navigation.find((item) => item.id === activePage);
   const PageIcon = currentPage?.icon ?? LayoutDashboard;
+
+  const metrics = data?.overview;
 
   const engagementRate =
     metrics && metrics.sessions > 0
@@ -174,8 +179,53 @@ const AdminApp: React.FC = () => {
     },
   ];
 
+  // Chuẩn bị dữ liệu biểu đồ xu hướng
+  const traffic = data?.trafficTrend ?? [];
+  const maxSessions = Math.max(
+    ...traffic.map((item) => item.sessions),
+    1
+  );
+
+  const chartWidth = 700;
+  const chartHeight = 220;
+  const chartPadding = 30;
+
+  const chartPoints = traffic.map((item, index) => {
+    const x =
+      traffic.length <= 1
+        ? chartWidth / 2
+        : chartPadding +
+          (index / (traffic.length - 1)) *
+            (chartWidth - chartPadding * 2);
+
+    const y =
+      chartHeight -
+      chartPadding -
+      (item.sessions / maxSessions) *
+        (chartHeight - chartPadding * 2);
+
+    return { x, y, ...item };
+  });
+
+  const linePoints = chartPoints
+    .map((point) => `${point.x},${point.y}`)
+    .join(' ');
+
+  // Chuẩn bị dữ liệu biểu đồ kênh
+  const channels = data?.acquisition ?? [];
+  const maxChannelSessions = Math.max(
+    ...channels.map((item) => item.sessions),
+    1
+  );
+
+  const channelTotal = channels.reduce(
+    (sum, item) => sum + item.sessions,
+    0
+  );
+
   return (
     <div className="min-h-screen bg-[#F6F7F5] text-[#202923] flex">
+
       {/* Sidebar */}
       <aside
         className={`${
@@ -189,7 +239,9 @@ const AdminApp: React.FC = () => {
 
           {sidebarOpen && (
             <div className="ml-3">
-              <div className="font-semibold tracking-[0.12em] text-sm">GIAO THỜI</div>
+              <div className="font-semibold tracking-[0.12em] text-sm">
+                GIAO THỜI
+              </div>
               <div className="text-[10px] text-white/50 tracking-[0.16em] mt-1">
                 MARKETING AI
               </div>
@@ -199,7 +251,9 @@ const AdminApp: React.FC = () => {
 
         <nav className="flex-1 px-3 py-6 overflow-y-auto">
           {['OVERVIEW', 'WORKSPACE', 'MANAGEMENT'].map((group) => {
-            const items = navigation.filter((item) => item.group === group);
+            const items = navigation.filter(
+              (item) => item.group === group
+            );
 
             return (
               <div key={group} className="mb-7">
@@ -217,7 +271,9 @@ const AdminApp: React.FC = () => {
                     return (
                       <button
                         key={item.id}
-                        onClick={() => setActivePage(item.id as AdminPage)}
+                        onClick={() =>
+                          setActivePage(item.id as AdminPage)
+                        }
                         title={!sidebarOpen ? item.label : undefined}
                         className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${
                           isActive
@@ -227,7 +283,9 @@ const AdminApp: React.FC = () => {
                       >
                         <Icon size={18} strokeWidth={1.8} />
                         {sidebarOpen && (
-                          <span className="text-[13px]">{item.label}</span>
+                          <span className="text-[13px]">
+                            {item.label}
+                          </span>
                         )}
                       </button>
                     );
@@ -244,7 +302,9 @@ const AdminApp: React.FC = () => {
             className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-white/60 hover:bg-white/10"
           >
             <PanelLeftClose size={18} />
-            {sidebarOpen && <span className="text-xs">Thu gọn thanh bên</span>}
+            {sidebarOpen && (
+              <span className="text-xs">Thu gọn thanh bên</span>
+            )}
           </button>
         </div>
       </aside>
@@ -274,7 +334,9 @@ const AdminApp: React.FC = () => {
           <div className="flex items-center gap-2 md:gap-4">
             <div className="hidden md:flex items-center gap-2 bg-[#F6F7F5] px-3 py-2 rounded-lg w-[190px]">
               <Search size={15} className="text-[#929A93]" />
-              <span className="text-xs text-[#929A93]">Tìm kiếm...</span>
+              <span className="text-xs text-[#929A93]">
+                Tìm kiếm...
+              </span>
             </div>
 
             <button
@@ -290,15 +352,22 @@ const AdminApp: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-[#E9E1D3] text-[#69563B] flex items-center justify-center text-xs font-semibold">
                 GT
               </div>
-              <span className="hidden md:block text-xs font-medium">Admin</span>
-              <ChevronDown size={14} className="text-[#929A93] hidden md:block" />
+              <span className="hidden md:block text-xs font-medium">
+                Admin
+              </span>
+              <ChevronDown
+                size={14}
+                className="text-[#929A93] hidden md:block"
+              />
             </button>
           </div>
         </header>
 
         <main className="flex-1 p-5 md:p-8 max-w-[1600px] w-full mx-auto">
+
           {activePage === 'dashboard' ? (
             <div className="space-y-7">
+
               {/* Welcome */}
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
@@ -322,7 +391,10 @@ const AdminApp: React.FC = () => {
                     disabled={loading}
                     className="flex items-center gap-2 bg-white border border-[#E8EBE7] rounded-lg px-3 py-2 text-xs text-[#68736A] hover:bg-[#F6F7F5] disabled:opacity-50"
                   >
-                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                    <RefreshCw
+                      size={14}
+                      className={loading ? 'animate-spin' : ''}
+                    />
                     {loading ? 'Đang tải...' : 'Làm mới dữ liệu'}
                   </button>
                 </div>
@@ -331,7 +403,10 @@ const AdminApp: React.FC = () => {
               {/* Connection Status */}
               {error ? (
                 <div className="bg-[#FFF1F0] border border-[#F2D0CC] rounded-xl p-4 flex gap-3">
-                  <CircleHelp size={19} className="text-[#B64B40] shrink-0" />
+                  <CircleHelp
+                    size={19}
+                    className="text-[#B64B40] shrink-0"
+                  />
                   <div>
                     <div className="text-sm font-semibold text-[#963C33]">
                       Không thể kết nối Dashboard API
@@ -353,14 +428,14 @@ const AdminApp: React.FC = () => {
                     <div className="text-sm font-semibold text-[#376344]">
                       {loading
                         ? 'Đang kết nối GA4...'
-                        : metrics
+                        : data
                           ? 'Đã kết nối GA4 Data API'
                           : 'Đang chờ dữ liệu GA4'}
                     </div>
                     <p className="text-xs text-[#64816A] mt-1 leading-relaxed">
                       {loading
                         ? 'Đang tải các chỉ số từ n8n.'
-                        : metrics
+                        : data
                           ? 'Các chỉ số bên dưới được lấy trực tiếp từ Google Analytics 4.'
                           : 'Dashboard sẽ hiển thị số liệu sau khi kết nối thành công.'}
                     </p>
@@ -379,11 +454,13 @@ const AdminApp: React.FC = () => {
                       className="bg-white border border-[#E8EBE7] rounded-xl p-5"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="text-xs text-[#89938A]">{item.label}</div>
+                        <div className="text-xs text-[#89938A]">
+                          {item.label}
+                        </div>
                         <Icon size={17} className="text-[#9A8769]" />
                       </div>
                       <div className="text-2xl font-semibold text-[#29372F] mt-4">
-                        {loading && !metrics ? '...' : item.value}
+                        {loading && !data ? '...' : item.value}
                       </div>
                       <div className="text-[11px] text-[#A0A8A1] mt-2">
                         {item.note}
@@ -391,6 +468,225 @@ const AdminApp: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Traffic Trend */}
+              <div className="bg-white border border-[#E8EBE7] rounded-xl p-5 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={17} className="text-[#9A8769]" />
+                      <h3 className="text-sm font-semibold">
+                        Traffic Trend
+                      </h3>
+                    </div>
+                    <p className="text-xs text-[#929A93] mt-1">
+                      Xu hướng lượt truy cập theo ngày
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-[#929A93]">
+                    Sessions / ngày
+                  </span>
+                </div>
+
+                {traffic.length > 0 ? (
+                  <div className="w-full overflow-hidden">
+                    <svg
+                      viewBox={`0 0 ${chartWidth} ${chartHeight + 35}`}
+                      className="w-full h-auto"
+                      role="img"
+                      aria-label="Biểu đồ lượt truy cập theo ngày"
+                    >
+                      {[0, 1, 2, 3].map((step) => {
+                        const y =
+                          chartPadding +
+                          (step / 3) *
+                            (chartHeight - chartPadding * 2);
+
+                        return (
+                          <line
+                            key={step}
+                            x1={chartPadding}
+                            y1={y}
+                            x2={chartWidth - chartPadding}
+                            y2={y}
+                            stroke="#E8EBE7"
+                            strokeDasharray="4 5"
+                          />
+                        );
+                      })}
+
+                      <polyline
+                        points={linePoints}
+                        fill="none"
+                        stroke="#718D78"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+
+                      {chartPoints.map((point) => (
+                        <g key={point.date}>
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r="5"
+                            fill="#D5B98C"
+                            stroke="#FFFFFF"
+                            strokeWidth="2"
+                          />
+                          <text
+                            x={point.x}
+                            y={chartHeight + 18}
+                            textAnchor="middle"
+                            fontSize="12"
+                            fill="#929A93"
+                          >
+                            {formatDate(point.date)}
+                          </text>
+                        </g>
+                      ))}
+                    </svg>
+
+                    <div className="flex items-center justify-center gap-2 mt-3">
+                      <span className="w-2 h-2 rounded-full bg-[#718D78]" />
+                      <span className="text-[11px] text-[#929A93]">
+                        Sessions
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-xs text-[#929A93]">
+                    {loading
+                      ? 'Đang tải dữ liệu...'
+                      : 'Chưa có dữ liệu xu hướng truy cập.'}
+                  </div>
+                )}
+              </div>
+
+              {/* Acquisition */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+                <div className="bg-white border border-[#E8EBE7] rounded-xl p-5 md:p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="text-sm font-semibold">
+                        Traffic Acquisition
+                      </h3>
+                      <p className="text-xs text-[#929A93] mt-1">
+                        Phân bổ phiên truy cập theo kênh
+                      </p>
+                    </div>
+                    <ChartNoAxesCombined
+                      size={18}
+                      className="text-[#9A8769]"
+                    />
+                  </div>
+
+                  {channels.length > 0 ? (
+                    <div className="space-y-5">
+                      {channels.map((channel) => {
+                        const percentage =
+                          channelTotal > 0
+                            ? (channel.sessions / channelTotal) * 100
+                            : 0;
+
+                        return (
+                          <div key={channel.channel}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-[#46534A]">
+                                {channel.channel}
+                              </span>
+                              <span className="text-xs text-[#818B82]">
+                                {formatNumber(channel.sessions)} sessions
+                                {' · '}
+                                {percentage.toFixed(1)}%
+                              </span>
+                            </div>
+
+                            <div className="w-full h-2.5 bg-[#F0F2EF] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#829B84] rounded-full transition-all"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center text-xs text-[#929A93]">
+                      {loading
+                        ? 'Đang tải dữ liệu...'
+                        : 'Chưa có dữ liệu kênh truy cập.'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Acquisition details */}
+                <div className="bg-white border border-[#E8EBE7] rounded-xl p-5 md:p-6">
+                  <h3 className="text-sm font-semibold mb-1">
+                    Channel Performance
+                  </h3>
+                  <p className="text-xs text-[#929A93] mb-5">
+                    Hiệu quả của từng nhóm kênh
+                  </p>
+
+                  {channels.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b border-[#E8EBE7] text-[10px] text-[#929A93]">
+                            <th className="pb-3 font-medium">Kênh</th>
+                            <th className="pb-3 font-medium text-right">
+                              Sessions
+                            </th>
+                            <th className="pb-3 font-medium text-right">
+                              Active Users
+                            </th>
+                            <th className="pb-3 font-medium text-right">
+                              Engaged
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {channels.map((channel) => (
+                            <tr
+                              key={channel.channel}
+                              className="border-b border-[#F0F2EF] last:border-0"
+                            >
+                              <td className="py-3 text-xs font-medium text-[#46534A]">
+                                {channel.channel}
+                              </td>
+                              <td className="py-3 text-xs text-right">
+                                {formatNumber(channel.sessions)}
+                              </td>
+                              <td className="py-3 text-xs text-right">
+                                {formatNumber(channel.activeUsers)}
+                              </td>
+                              <td className="py-3 text-xs text-right">
+                                {formatNumber(channel.engagedSessions)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center text-xs text-[#929A93]">
+                      Chưa có dữ liệu để hiển thị.
+                    </div>
+                  )}
+
+                  <div className="mt-5 pt-4 border-t border-[#E8EBE7] flex justify-between">
+                    <span className="text-xs text-[#929A93]">
+                      Tổng Sessions
+                    </span>
+                    <span className="text-sm font-semibold text-[#29372F]">
+                      {formatNumber(channelTotal)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Additional Metrics */}
@@ -401,7 +697,9 @@ const AdminApp: React.FC = () => {
                     <h3 className="text-sm font-semibold">Page Views</h3>
                   </div>
                   <div className="text-2xl font-semibold mt-4">
-                    {metrics ? formatNumber(metrics.screenPageViews) : '—'}
+                    {metrics
+                      ? formatNumber(metrics.screenPageViews)
+                      : '—'}
                   </div>
                   <p className="text-xs text-[#929A93] mt-2">
                     Tổng lượt xem trang trong kỳ báo cáo
@@ -410,11 +708,16 @@ const AdminApp: React.FC = () => {
 
                 <div className="bg-white border border-[#E8EBE7] rounded-xl p-5">
                   <div className="flex items-center gap-2">
-                    <MousePointerClick size={17} className="text-[#9A8769]" />
+                    <MousePointerClick
+                      size={17}
+                      className="text-[#9A8769]"
+                    />
                     <h3 className="text-sm font-semibold">Event Count</h3>
                   </div>
                   <div className="text-2xl font-semibold mt-4">
-                    {metrics ? formatNumber(metrics.eventCount) : '—'}
+                    {metrics
+                      ? formatNumber(metrics.eventCount)
+                      : '—'}
                   </div>
                   <p className="text-xs text-[#929A93] mt-2">
                     Tổng số sự kiện được ghi nhận
@@ -424,12 +727,17 @@ const AdminApp: React.FC = () => {
 
               {/* Data Scope */}
               <div className="bg-white border border-[#E8EBE7] rounded-xl p-5">
-                <h3 className="text-sm font-semibold">Phạm vi dữ liệu hiện tại</h3>
+                <h3 className="text-sm font-semibold">
+                  Phạm vi dữ liệu hiện tại
+                </h3>
                 <p className="text-xs text-[#929A93] mt-2 leading-relaxed">
-                  Dashboard đang nhận dữ liệu tổng hợp từ GA4 trong 7 ngày gần nhất,
-                  kết thúc vào ngày hôm qua. Phiên bản API hiện tại chưa trả về dữ liệu
-                  phân chia theo ngày hoặc kênh truy cập, nên biểu đồ xu hướng và
-                  phân bổ kênh sẽ được bổ sung ở bước tiếp theo.
+                  Dữ liệu được lấy từ Google Analytics 4 trong 7 ngày gần nhất,
+                  kết thúc vào ngày hôm qua. Traffic Trend thể hiện số phiên
+                  theo ngày; Traffic Acquisition thể hiện số phiên theo nhóm
+                  kênh truy cập mặc định của GA4.
+                </p>
+                <p className="text-[11px] text-[#A0A8A1] mt-2">
+                  Nguồn: {data?.source ?? 'Google Analytics 4'}
                 </p>
               </div>
 
@@ -437,21 +745,27 @@ const AdminApp: React.FC = () => {
               <div className="bg-[#1F3029] text-white rounded-xl p-5 md:p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles size={17} className="text-[#D5B98C]" />
-                  <span className="text-sm font-semibold">AI Marketing Insights</span>
+                  <span className="text-sm font-semibold">
+                    AI Marketing Insights
+                  </span>
                 </div>
                 <p className="text-xs text-white/55 leading-relaxed">
-                  Khu vực này sẽ tổng hợp nhận định và đề xuất từ AI Agent sau khi
-                  kết nối chức năng phân tích. Hiện tại Dashboard chỉ hiển thị
-                  dữ liệu GA4, chưa tự động tạo insight.
+                  Khu vực này sẽ tổng hợp nhận định và đề xuất từ AI Agent
+                  dựa trên dữ liệu GA4, hiệu quả kênh truy cập và kiến thức
+                  thương hiệu GIAO THỜI. Hiện tại Dashboard mới hiển thị dữ
+                  liệu phân tích, chưa tự động tạo insight.
                 </p>
               </div>
+
             </div>
           ) : (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
               <div className="w-14 h-14 rounded-2xl bg-[#E9EEE9] flex items-center justify-center mb-5">
                 <PageIcon size={25} className="text-[#425B4B]" />
               </div>
-              <h2 className="text-xl font-semibold">{currentPage?.label}</h2>
+              <h2 className="text-xl font-semibold">
+                {currentPage?.label}
+              </h2>
               <p className="text-sm text-[#89938A] mt-2 max-w-md leading-relaxed">
                 {pageDescriptions[activePage]}
               </p>
