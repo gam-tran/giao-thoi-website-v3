@@ -236,9 +236,12 @@ const [contentRequest, setContentRequest] = useState({
               workflowId: 'CONTENT_STUDIO',
               payload: contentRequest,
             }
-          : {
-              workflowId: 'TEST',
-            }
+         : {
+    workflowId: 'TEST',
+    payload: {
+      testInput: 'GIAO THOI Manual Run Test'
+    }
+  }
       ),
     });
 
