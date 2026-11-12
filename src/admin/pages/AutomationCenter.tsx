@@ -17,6 +17,7 @@ const API = {
   executions: 'http://localhost:5678/webhook/giaothoi-automation-executions',
   schedules: 'http://localhost:5678/webhook/giaothoi-schedules',
   control: 'http://localhost:5678/webhook/giaothoi-automation-control',
+    run: 'http://localhost:5678/webhook/giaothoi-automation-run',
 };
 
 type WorkflowItem = {
@@ -89,6 +90,7 @@ export default function AutomationCenter() {
   const [actionId, setActionId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [runLoading, setRunLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -194,6 +196,53 @@ export default function AutomationCenter() {
       setActionId('');
     }
   };
+  
+const runTestWorkflow = async () => {
+  const confirmed = window.confirm(
+    'Bạn có muốn chạy workflow kiểm thử GIAO THỜI - Test Manual Run không?'
+  );
+
+  if (!confirmed) return;
+
+  setRunLoading(true);
+  setError('');
+  setNotice('');
+
+  try {
+    const response = await fetch(API.run, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        workflowId: 'TEST',
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || `Run API lỗi HTTP ${response.status}`
+      );
+    }
+
+    await loadData();
+
+    setNotice(
+      `Chạy thử thành công: ${result.message}. Dữ liệu nhận được: ${result.testInput}`
+    );
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : 'Không thể chạy workflow kiểm thử.'
+    );
+  } finally {
+    setRunLoading(false);
+  }
+};
+
 
   const activeCount = workflows.filter(item => item.active).length;
   const inactiveCount = workflows.length - activeCount;
@@ -383,6 +432,37 @@ export default function AutomationCenter() {
           )}
         </div>
       </section>
+  
+{/* Manual Run */}
+<section className="rounded-xl border border-[#E8EBE7] bg-white p-5">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <div className="flex items-center gap-2">
+        <Activity size={17} className="text-[#9A8769]" />
+        <h3 className="text-sm font-semibold text-[#26372E]">
+          Manual Workflow Execution
+        </h3>
+      </div>
+
+      <p className="mt-2 text-xs text-[#929A93]">
+        Chạy thử workflow thông qua Automation Run API.
+      </p>
+
+      <p className="mt-1 text-[10px] text-[#A0A8A1]">
+        Workflow: GIAO THỜI - Test Manual Run
+      </p>
+    </div>
+
+    <button
+      onClick={runTestWorkflow}
+      disabled={runLoading}
+      className="flex items-center justify-center gap-2 rounded-lg bg-[#20352B] px-4 py-2.5 text-xs text-white disabled:opacity-50"
+    >
+      <Activity size={14} />
+      {runLoading ? 'Đang thực thi...' : 'Chạy thử workflow'}
+    </button>
+  </div>
+</section>
 
       {/* Execution history */}
       <section className="overflow-hidden rounded-xl border border-[#E8EBE7] bg-white">
