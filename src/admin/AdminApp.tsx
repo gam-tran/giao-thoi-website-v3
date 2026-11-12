@@ -2,6 +2,7 @@
 import ContentStudio from './pages/ContentStudio';
 import CampaignPlanner from './pages/CampaignPlanner';
 import AIAssistant from './pages/AIAssistant';
+import Analytics from './pages/Analytics';
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
@@ -763,6 +764,8 @@ const AdminApp: React.FC = () => {
             </div>
                 ) : activePage === 'assistant' ? (
   <AIAssistant />
+) : activePage === 'analytics' ? (
+  <Analytics />
 ) : activePage === 'content' ? (
   <ContentStudio />
 ) : activePage === 'campaign' ? (
