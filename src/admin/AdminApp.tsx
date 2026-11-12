@@ -4,6 +4,7 @@ import CampaignPlanner from './pages/CampaignPlanner';
 import AIAssistant from './pages/AIAssistant';
 import Analytics from './pages/Analytics';
 import MarketingInsights from './pages/MarketingInsights';
+import AutomationCenter from './pages/AutomationCenter';
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
@@ -27,6 +28,7 @@ import {
   MousePointerClick,
   Activity,
   TrendingUp,
+  Workflow,
 } from 'lucide-react';
 
 type AdminPage =
@@ -36,6 +38,7 @@ type AdminPage =
   | 'insights'
   | 'content'
   | 'campaign'
+  | 'automation'
   | 'library'
   | 'settings';
 
@@ -46,6 +49,7 @@ const navigation = [
   { id: 'insights', label: 'Marketing Insights', icon: Lightbulb, group: 'WORKSPACE' },
   { id: 'content', label: 'Content Studio', icon: PenTool, group: 'WORKSPACE' },
   { id: 'campaign', label: 'Campaign Planner', icon: CalendarDays, group: 'WORKSPACE' },
+  { id: 'automation', label: 'Automation Center', icon: Workflow, group: 'MANAGEMENT' },
   { id: 'library', label: 'Brand Library', icon: Library, group: 'MANAGEMENT' },
   { id: 'settings', label: 'Settings', icon: Settings, group: 'MANAGEMENT' },
 ] as const;
@@ -59,6 +63,7 @@ const pageDescriptions: Record<AdminPage, string> = {
   campaign: 'Xây dựng và quản lý kế hoạch chiến dịch Marketing.',
   library: 'Tra cứu kiến thức thương hiệu và dữ liệu sản phẩm.',
   settings: 'Quản lý kết nối dữ liệu và cấu hình hệ thống.',
+  automation: 'Quản lý workflow, lịch chạy và hoạt động tự động hóa.',
 };
 
 const DASHBOARD_API_URL =
@@ -773,6 +778,8 @@ const AdminApp: React.FC = () => {
   <ContentStudio />
 ) : activePage === 'campaign' ? (
   <CampaignPlanner />
+) : activePage === 'automation' ? (
+  <AutomationCenter />
 ) : (
   <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
               <div className="w-14 h-14 rounded-2xl bg-[#E9EEE9] flex items-center justify-center mb-5">
