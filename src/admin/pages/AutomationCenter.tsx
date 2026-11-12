@@ -288,11 +288,7 @@ export default function AutomationCenter() {
         </div>
       )}
 
-      {notice && (
-        <div className="rounded-xl border border-[#D8E9DB] bg-[#EDF6EF] p-4 text-sm text-[#376344]">
-          {notice}
-        </div>
-      )}
+    
 
       {/* KPI */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -457,7 +453,11 @@ export default function AutomationCenter() {
     </button>
   </div>
 </section>
-
+{notice && (
+  <div className="rounded-xl border border-[#D8E9DB] bg-[#EDF6EF] p-4 text-sm text-[#376344]">
+    {notice}
+  </div>
+)}
       {/* Execution history */}
       <section className="overflow-hidden rounded-xl border border-[#E8EBE7] bg-white">
         <div className="border-b border-[#E8EBE7] p-5">
