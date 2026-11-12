@@ -1,5 +1,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   Activity,
   AlertCircle,
@@ -825,9 +826,9 @@ const [contentResult, setContentResult] = useState('');
       </button>
     </div>
 
-    <div className="mt-4 whitespace-pre-wrap rounded-lg bg-[#F8F9F7] p-4 text-xs leading-6 text-[#34443A]">
-      {contentResult}
-    </div>
+    <div className="mt-4 rounded-lg bg-[#F8F9F7] p-4 text-xs leading-6 text-[#34443A] [&_h1]:mb-3 [&_h1]:mt-5 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-bold [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-sm [&_h3]:font-bold [&_strong]:font-bold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_p]:my-2 [&_hr]:my-4 [&_hr]:border-[#DDE3DC]">
+  <ReactMarkdown>{contentResult}</ReactMarkdown>
+</div>
   </section>
 )}
 
