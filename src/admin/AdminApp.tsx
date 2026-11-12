@@ -1,4 +1,4 @@
-
+import ContentStudio from './pages/ContentStudio';
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
@@ -758,6 +758,8 @@ const AdminApp: React.FC = () => {
               </div>
 
             </div>
+                   ) : activePage === 'content' ? (
+            <ContentStudio />
           ) : (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
               <div className="w-14 h-14 rounded-2xl bg-[#E9EEE9] flex items-center justify-center mb-5">
