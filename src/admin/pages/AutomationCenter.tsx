@@ -91,6 +91,17 @@ export default function AutomationCenter() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [runLoading, setRunLoading] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<'TEST' | 'CONTENT_STUDIO'>('CONTENT_STUDIO');
+const [contentResult, setContentResult] = useState('');
+
+const [contentRequest, setContentRequest] = useState({
+  product: 'Tranh Đông Hồ',
+  platform: 'Facebook',
+  contentType: 'Post',
+  objective: 'Tăng tương tác',
+  tone: 'Gần gũi, tự nhiên',
+  brief: 'Giới thiệu tranh Đông Hồ và cách ứng dụng trong không gian sống hiện đại.'
+});
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -197,45 +208,69 @@ export default function AutomationCenter() {
     }
   };
   
-  const runTestWorkflow = async () => {
-    const confirmed = window.confirm(
-      'Bạn có muốn chạy workflow kiểm thử GIAO THỜI - Test Manual Run không?'
-    );
-    if (!confirmed) return;
+ const runWorkflow = async () => {
+  const isContentStudio = selectedRun === 'CONTENT_STUDIO';
 
-    setRunLoading(true);
-    setError('');
-    setNotice('');
+  const confirmed = window.confirm(
+    isContentStudio
+      ? 'Bạn có muốn chạy Content Studio để tạo nội dung AI không?'
+      : 'Bạn có muốn chạy workflow kiểm thử không?'
+  );
 
-    try {
-      const response = await fetch(API.run, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ workflowId: 'TEST' }),
-      });
+  if (!confirmed) return;
 
-      const result = await response.json();
+  setRunLoading(true);
+  setError('');
+  setNotice('');
+  setContentResult('');
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || `Run API lỗi HTTP ${response.status}`);
-      }
+  try {
+    const response = await fetch(API.run, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(
+        isContentStudio
+          ? {
+              workflowId: 'CONTENT_STUDIO',
+              payload: contentRequest,
+            }
+          : {
+              workflowId: 'TEST',
+            }
+      ),
+    });
 
-      await loadData();
-      setNotice(
-        `Chạy thử thành công: ${result.message}. Dữ liệu nhận được: ${result.testInput}`
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || `Run API lỗi HTTP ${response.status}`
       );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Không thể chạy workflow kiểm thử.'
-      );
-    } finally {
-      setRunLoading(false);
     }
-  };
+
+    if (isContentStudio) {
+      setContentResult(result.content || '');
+    }
+
+    await loadData();
+
+    setNotice(
+      isContentStudio
+        ? 'Content Studio đã chạy thành công và tạo nội dung AI.'
+        : `Chạy thử thành công: ${result.message}. Dữ liệu nhận được: ${result.testInput}`
+    );
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : 'Không thể thực thi workflow.'
+    );
+  } finally {
+    setRunLoading(false);
+  }
+};
 
 
   const activeCount = workflows.filter(item => item.active).length;
@@ -422,42 +457,194 @@ export default function AutomationCenter() {
           )}
         </div>
       </section>
-  
-{/* Manual Run */}
+  {/* Manual Run */}
 <section className="rounded-xl border border-[#E8EBE7] bg-white p-5">
-  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <div>
-      <div className="flex items-center gap-2">
-        <Activity size={17} className="text-[#9A8769]" />
-        <h3 className="text-sm font-semibold text-[#26372E]">
-          Manual Workflow Execution
-        </h3>
+  <div className="flex items-center gap-2">
+    <Activity size={17} className="text-[#9A8769]" />
+    <h3 className="text-sm font-semibold text-[#26372E]">
+      Manual Workflow Execution
+    </h3>
+  </div>
+
+  <p className="mt-2 text-xs text-[#929A93]">
+    Chạy workflow trực tiếp thông qua Automation Run API.
+  </p>
+
+  {/* Workflow selection */}
+  <div className="mt-5 max-w-md">
+    <label className="mb-2 block text-xs font-medium text-[#526056]">
+      Chọn workflow
+    </label>
+    <select
+      value={selectedRun}
+      onChange={e => setSelectedRun(e.target.value as 'TEST' | 'CONTENT_STUDIO')}
+      disabled={runLoading}
+      className="w-full rounded-lg border border-[#E1E6E0] bg-white px-3 py-2.5 text-xs text-[#34443A]"
+    >
+      <option value="CONTENT_STUDIO">GIAO THỜI - Content Studio API</option>
+      <option value="TEST">GIAO THỜI - Test Manual Run</option>
+    </select>
+  </div>
+
+  {/* Content Studio inputs */}
+  {selectedRun === 'CONTENT_STUDIO' && (
+    <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Sản phẩm
+        </label>
+        <input
+          value={contentRequest.product}
+          onChange={e => setContentRequest(prev => ({
+            ...prev,
+            product: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs text-[#34443A]"
+          placeholder="Tên sản phẩm"
+        />
       </div>
 
-      <p className="mt-2 text-xs text-[#929A93]">
-        Chạy thử workflow thông qua Automation Run API.
-      </p>
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Nền tảng
+        </label>
+        <select
+          value={contentRequest.platform}
+          onChange={e => setContentRequest(prev => ({
+            ...prev,
+            platform: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] bg-white px-3 py-2.5 text-xs text-[#34443A]"
+        >
+          <option>Facebook</option>
+          <option>TikTok</option>
+          <option>Instagram</option>
+          <option>Website</option>
+          <option>Zalo</option>
+        </select>
+      </div>
 
-      <p className="mt-1 text-[10px] text-[#A0A8A1]">
-        Workflow: GIAO THỜI - Test Manual Run
-      </p>
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Loại nội dung
+        </label>
+        <select
+          value={contentRequest.contentType}
+          onChange={e => setContentRequest(prev => ({
+            ...prev,
+            contentType: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] bg-white px-3 py-2.5 text-xs text-[#34443A]"
+        >
+          <option>Post</option>
+          <option>Caption</option>
+          <option>Video Script</option>
+          <option>Product Description</option>
+          <option>Content Ideas</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Mục tiêu
+        </label>
+        <select
+          value={contentRequest.objective}
+          onChange={e => setContentRequest(prev => ({
+            ...prev,
+            objective: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] bg-white px-3 py-2.5 text-xs text-[#34443A]"
+        >
+          <option>Tăng tương tác</option>
+          <option>Tăng nhận diện thương hiệu</option>
+          <option>Tăng lượt truy cập website</option>
+          <option>Tăng tin nhắn tư vấn</option>
+          <option>Thúc đẩy mua hàng</option>
+        </select>
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Giọng văn
+        </label>
+        <input
+          value={contentRequest.tone}
+          onChange={e => setContentRequest(prev => ({
+            ...prev,
+            tone: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs text-[#34443A]"
+          placeholder="Ví dụ: gần gũi, tự nhiên"
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Yêu cầu nội dung (Brief)
+        </label>
+        <textarea
+          rows={4}
+          value={contentRequest.brief}
+          onChange={e => setContentRequest(prev => ({
+            ...prev,
+            brief: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs text-[#34443A]"
+          placeholder="Mô tả yêu cầu nội dung muốn AI thực hiện..."
+        />
+      </div>
     </div>
+  )}
 
+  <div className="mt-5 flex justify-end">
     <button
-      onClick={runTestWorkflow}
+      onClick={runWorkflow}
       disabled={runLoading}
-      className="flex items-center justify-center gap-2 rounded-lg bg-[#20352B] px-4 py-2.5 text-xs text-white disabled:opacity-50"
+      className="flex items-center justify-center gap-2 rounded-lg bg-[#20352B] px-5 py-2.5 text-xs text-white disabled:opacity-50"
     >
       <Activity size={14} />
-      {runLoading ? 'Đang thực thi...' : 'Chạy thử workflow'}
+      {runLoading ? 'Đang thực thi...' : 'Chạy workflow'}
     </button>
   </div>
 </section>
+
 {notice && (
   <div className="rounded-xl border border-[#D8E9DB] bg-[#EDF6EF] p-4 text-sm text-[#376344]">
     {notice}
   </div>
 )}
+
+{/* Generated Content */}
+{contentResult && (
+  <section className="rounded-xl border border-[#E8EBE7] bg-white p-5">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h3 className="text-sm font-semibold text-[#26372E]">
+          AI Generated Content
+        </h3>
+        <p className="mt-1 text-xs text-[#929A93]">
+          Nội dung được tạo bởi Content Studio.
+        </p>
+      </div>
+
+      <button
+        onClick={() => {
+          navigator.clipboard.writeText(contentResult);
+          setNotice('Đã sao chép nội dung.');
+        }}
+        className="rounded-lg border border-[#E1E6E0] px-3 py-2 text-xs text-[#526056] hover:bg-[#F8F9F7]"
+      >
+        Sao chép nội dung
+      </button>
+    </div>
+
+    <div className="mt-4 whitespace-pre-wrap rounded-lg bg-[#F8F9F7] p-4 text-xs leading-6 text-[#34443A]">
+      {contentResult}
+    </div>
+  </section>
+)}
+
       {/* Execution history */}
       <section className="overflow-hidden rounded-xl border border-[#E8EBE7] bg-white">
         <div className="border-b border-[#E8EBE7] p-5">
