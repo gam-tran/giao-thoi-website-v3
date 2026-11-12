@@ -1,4 +1,6 @@
+
 import ContentStudio from './pages/ContentStudio';
+import CampaignPlanner from './pages/CampaignPlanner';
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
@@ -760,10 +762,12 @@ const AdminApp: React.FC = () => {
               </div>
 
             </div>
-                   ) : activePage === 'content' ? (
-            <ContentStudio />
-          ) : (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
+                 ) : activePage === 'content' ? (
+  <ContentStudio />
+) : activePage === 'campaign' ? (
+  <CampaignPlanner />
+) : (
+  <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
               <div className="w-14 h-14 rounded-2xl bg-[#E9EEE9] flex items-center justify-center mb-5">
                 <PageIcon size={25} className="text-[#425B4B]" />
               </div>
