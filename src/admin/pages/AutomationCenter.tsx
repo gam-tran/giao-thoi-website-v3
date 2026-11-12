@@ -95,7 +95,6 @@ export default function AutomationCenter() {
   'TEST' | 'CONTENT_STUDIO' | 'CAMPAIGN_PLANNER'
 >('CONTENT_STUDIO');
 
-const [contentResult, setContentResult] = useState('');
 
 const [contentRequest, setContentRequest] = useState({
   product: 'Tranh Đông Hồ',
@@ -116,17 +115,8 @@ const [campaignRequest, setCampaignRequest] = useState({
   channels: ['Facebook', 'TikTok', 'Website'],
   brief: 'Ưu tiên ngân sách tiết kiệm, nội dung gần gũi, nhấn mạnh tính ứng dụng và khả năng làm quà tặng.'
 });
-  const [selectedRun, setSelectedRun] = useState<'TEST' | 'CONTENT_STUDIO'>('CONTENT_STUDIO');
 const [contentResult, setContentResult] = useState('');
 
-const [contentRequest, setContentRequest] = useState({
-  product: 'Tranh Đông Hồ',
-  platform: 'Facebook',
-  contentType: 'Post',
-  objective: 'Tăng tương tác',
-  tone: 'Gần gũi, tự nhiên',
-  brief: 'Giới thiệu tranh Đông Hồ và cách ứng dụng trong không gian sống hiện đại.'
-});
 
   const loadData = useCallback(async () => {
     setLoading(true);
