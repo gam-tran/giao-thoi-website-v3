@@ -91,6 +91,31 @@ export default function AutomationCenter() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [runLoading, setRunLoading] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<
+  'TEST' | 'CONTENT_STUDIO' | 'CAMPAIGN_PLANNER'
+>('CONTENT_STUDIO');
+
+const [contentResult, setContentResult] = useState('');
+
+const [contentRequest, setContentRequest] = useState({
+  product: 'Tranh Đông Hồ',
+  platform: 'Facebook',
+  contentType: 'Post',
+  objective: 'Tăng tương tác',
+  tone: 'Gần gũi, tự nhiên',
+  brief: 'Giới thiệu tranh Đông Hồ và cách ứng dụng trong không gian sống hiện đại.'
+});
+
+const [campaignRequest, setCampaignRequest] = useState({
+  campaignName: 'Quà Việt cho không gian sống hiện đại',
+  product: 'Nón lá lụa',
+  objective: 'Tăng nhận diện thương hiệu',
+  targetAudience: 'Người trên 25 tuổi, nhân viên văn phòng, quan tâm đến sản phẩm mang bản sắc Việt và đồ trang trí',
+  duration: '30 ngày',
+  budget: '5000000',
+  channels: ['Facebook', 'TikTok', 'Website'],
+  brief: 'Ưu tiên ngân sách tiết kiệm, nội dung gần gũi, nhấn mạnh tính ứng dụng và khả năng làm quà tặng.'
+});
   const [selectedRun, setSelectedRun] = useState<'TEST' | 'CONTENT_STUDIO'>('CONTENT_STUDIO');
 const [contentResult, setContentResult] = useState('');
 
@@ -210,11 +235,27 @@ const [contentRequest, setContentRequest] = useState({
   
  const runWorkflow = async () => {
   const isContentStudio = selectedRun === 'CONTENT_STUDIO';
+  const isCampaignPlanner = selectedRun === 'CAMPAIGN_PLANNER';
+
+  if (
+    isCampaignPlanner &&
+    (
+      !campaignRequest.campaignName.trim() ||
+      !campaignRequest.product.trim() ||
+      !campaignRequest.targetAudience.trim() ||
+      campaignRequest.channels.length === 0
+    )
+  ) {
+    setError('Vui lòng nhập tên chiến dịch, sản phẩm, khách hàng mục tiêu và chọn ít nhất một kênh.');
+    return;
+  }
 
   const confirmed = window.confirm(
     isContentStudio
       ? 'Bạn có muốn chạy Content Studio để tạo nội dung AI không?'
-      : 'Bạn có muốn chạy workflow kiểm thử không?'
+      : isCampaignPlanner
+        ? 'Bạn có muốn chạy Campaign Planner để lập kế hoạch chiến dịch AI không?'
+        : 'Bạn có muốn chạy workflow kiểm thử không?'
   );
 
   if (!confirmed) return;
@@ -225,24 +266,26 @@ const [contentRequest, setContentRequest] = useState({
   setContentResult('');
 
   try {
+    const payload = isContentStudio
+      ? {
+          workflowId: 'CONTENT_STUDIO',
+          payload: contentRequest,
+        }
+      : isCampaignPlanner
+        ? {
+            workflowId: 'CAMPAIGN_PLANNER',
+            payload: campaignRequest,
+          }
+        : {
+            workflowId: 'TEST',
+          };
+
     const response = await fetch(API.run, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(
-        isContentStudio
-          ? {
-              workflowId: 'CONTENT_STUDIO',
-              payload: contentRequest,
-            }
-         : {
-    workflowId: 'TEST',
-    payload: {
-      testInput: 'GIAO THOI Manual Run Test'
-    }
-  }
-      ),
+      body: JSON.stringify(payload),
     });
 
     const result = await response.json();
@@ -253,7 +296,7 @@ const [contentRequest, setContentRequest] = useState({
       );
     }
 
-    if (isContentStudio) {
+    if (isContentStudio || isCampaignPlanner) {
       setContentResult(result.content || '');
     }
 
@@ -262,7 +305,9 @@ const [contentRequest, setContentRequest] = useState({
     setNotice(
       isContentStudio
         ? 'Content Studio đã chạy thành công và tạo nội dung AI.'
-        : `Chạy thử thành công: ${result.message}. Dữ liệu nhận được: ${result.testInput}`
+        : isCampaignPlanner
+          ? 'Campaign Planner đã chạy thành công và tạo kế hoạch chiến dịch AI.'
+          : `Chạy thử thành công: ${result.message}. Dữ liệu nhận được: ${result.testInput}`
     );
   } catch (err) {
     setError(
@@ -484,8 +529,11 @@ const [contentRequest, setContentRequest] = useState({
       disabled={runLoading}
       className="w-full rounded-lg border border-[#E1E6E0] bg-white px-3 py-2.5 text-xs text-[#34443A]"
     >
-      <option value="CONTENT_STUDIO">GIAO THỜI - Content Studio API</option>
-      <option value="TEST">GIAO THỜI - Test Manual Run</option>
+     <option value="CONTENT_STUDIO">Content Studio - Tạo nội dung AI</option>
+<option value="CAMPAIGN_PLANNER">
+  Campaign Planner - Lập kế hoạch chiến dịch
+</option>
+<option value="TEST">Test Manual Run - Kiểm thử workflow</option>
     </select>
   </div>
 
@@ -595,6 +643,139 @@ const [contentRequest, setContentRequest] = useState({
           }))}
           className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs text-[#34443A]"
           placeholder="Mô tả yêu cầu nội dung muốn AI thực hiện..."
+        />
+           </div>
+    </div>
+  )}
+
+  {/* Campaign Planner inputs */}
+  {selectedRun === 'CAMPAIGN_PLANNER' && (
+    <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Tên chiến dịch
+        </label>
+        <input
+          value={campaignRequest.campaignName}
+          onChange={e => setCampaignRequest(prev => ({
+            ...prev,
+            campaignName: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Sản phẩm
+        </label>
+        <input
+          value={campaignRequest.product}
+          onChange={e => setCampaignRequest(prev => ({
+            ...prev,
+            product: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Mục tiêu chiến dịch
+        </label>
+        <select
+          value={campaignRequest.objective}
+          onChange={e => setCampaignRequest(prev => ({
+            ...prev,
+            objective: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] bg-white px-3 py-2.5 text-xs"
+        >
+          <option>Tăng nhận diện thương hiệu</option>
+          <option>Tăng tương tác</option>
+          <option>Tăng lượt truy cập website</option>
+          <option>Tăng tin nhắn và đơn hàng</option>
+        </select>
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Khách hàng mục tiêu
+        </label>
+        <textarea
+          rows={2}
+          value={campaignRequest.targetAudience}
+          onChange={e => setCampaignRequest(prev => ({
+            ...prev,
+            targetAudience: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Thời gian triển khai
+        </label>
+        <input
+          value={campaignRequest.duration}
+          onChange={e => setCampaignRequest(prev => ({
+            ...prev,
+            duration: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Ngân sách (VNĐ)
+        </label>
+        <input
+          value={campaignRequest.budget}
+          onChange={e => setCampaignRequest(prev => ({
+            ...prev,
+            budget: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs"
+        />
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Kênh triển khai
+        </label>
+        <div className="flex flex-wrap gap-4">
+          {['Facebook', 'TikTok', 'Website'].map(channel => (
+            <label key={channel} className="flex items-center gap-2 text-xs text-[#526056]">
+              <input
+                type="checkbox"
+                checked={campaignRequest.channels.includes(channel)}
+                onChange={e => setCampaignRequest(prev => ({
+                  ...prev,
+                  channels: e.target.checked
+                    ? [...prev.channels, channel]
+                    : prev.channels.filter(item => item !== channel)
+                }))}
+              />
+              {channel}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="mb-2 block text-xs font-medium text-[#526056]">
+          Yêu cầu bổ sung
+        </label>
+        <textarea
+          rows={3}
+          value={campaignRequest.brief}
+          onChange={e => setCampaignRequest(prev => ({
+            ...prev,
+            brief: e.target.value
+          }))}
+          className="w-full rounded-lg border border-[#E1E6E0] px-3 py-2.5 text-xs"
         />
       </div>
     </div>
