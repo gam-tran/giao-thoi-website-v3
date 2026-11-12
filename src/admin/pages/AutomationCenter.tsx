@@ -287,7 +287,12 @@ const [contentResult, setContentResult] = useState('');
     }
 
     if (isContentStudio || isCampaignPlanner) {
-      setContentResult(result.content || '');
+     setContentResult(
+  result.content ||
+  result.campaignPlan ||
+  result.output ||
+  ''
+);
     }
 
     await loadData();
@@ -515,7 +520,9 @@ const [contentResult, setContentResult] = useState('');
     </label>
     <select
       value={selectedRun}
-      onChange={e => setSelectedRun(e.target.value as 'TEST' | 'CONTENT_STUDIO')}
+      onChange={e => setSelectedRun(
+  e.target.value as 'TEST' | 'CONTENT_STUDIO' | 'CAMPAIGN_PLANNER'
+)}
       disabled={runLoading}
       className="w-full rounded-lg border border-[#E1E6E0] bg-white px-3 py-2.5 text-xs text-[#34443A]"
     >
@@ -793,14 +800,19 @@ const [contentResult, setContentResult] = useState('');
 {contentResult && (
   <section className="rounded-xl border border-[#E8EBE7] bg-white p-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h3 className="text-sm font-semibold text-[#26372E]">
-          AI Generated Content
-        </h3>
-        <p className="mt-1 text-xs text-[#929A93]">
-          Nội dung được tạo bởi Content Studio.
-        </p>
-      </div>
+    <div>
+  <h3 className="text-sm font-semibold text-[#26372E]">
+    {selectedRun === 'CAMPAIGN_PLANNER'
+      ? 'AI Generated Campaign Plan'
+      : 'AI Generated Content'}
+  </h3>
+
+  <p className="mt-1 text-xs text-[#929A93]">
+    {selectedRun === 'CAMPAIGN_PLANNER'
+      ? 'Kế hoạch chiến dịch được tạo bởi Campaign Planner.'
+      : 'Nội dung được tạo bởi Content Studio.'}
+  </p>
+</div>
 
       <button
         onClick={() => {
