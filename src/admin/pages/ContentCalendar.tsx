@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Circle,
   Trash2,
+  Pencil,
   Filter,
 } from 'lucide-react';
 
@@ -34,6 +35,7 @@ const CALENDAR_API_BASE = (
 
 const CALENDAR_GET_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar`;
 const CALENDAR_SAVE_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar-save`;
+const CALENDAR_UPDATE_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar-update`;
 
 const statusStyles: Record<PostStatus, string> = {
   Draft: 'bg-gray-100 text-gray-600',
@@ -48,6 +50,7 @@ const ContentCalendar: React.FC = () => {
   const [filterPlatform, setFilterPlatform] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [showModal, setShowModal] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 const [isSaving, setIsSaving] = useState(false);
 const [apiError, setApiError] = useState('');
@@ -144,35 +147,43 @@ useEffect(() => {
     setCurrentDate(new Date(year, month + amount, 1));
   };
 
-  const handleCreatePost = async (e: React.FormEvent) => {
+  
+const handleSavePost = async (e: React.FormEvent) => {
   e.preventDefault();
 
   if (!form.title.trim() || !form.date || !form.time || isSaving) return;
 
-  const newPost: CalendarPost = {
+  const postId = editingPostId || `POST-${Date.now()}`;
+
+  const postToSave: CalendarPost = {
     ...form,
-    id: `POST-${Date.now()}`,
+    id: postId,
   };
+
+  const isEditing = Boolean(editingPostId);
 
   try {
     setIsSaving(true);
     setApiError('');
 
-    const response = await fetch(CALENDAR_SAVE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        postId: newPost.id,
-        title: newPost.title,
-        product: newPost.product,
-        platform: newPost.platform,
-        date: newPost.date,
-        time: newPost.time,
-        status: newPost.status,
-      }),
-    });
+    const response = await fetch(
+      isEditing ? CALENDAR_UPDATE_URL : CALENDAR_SAVE_URL,
+      {
+        method: isEditing ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postId: postToSave.id,
+          title: postToSave.title,
+          product: postToSave.product,
+          platform: postToSave.platform,
+          date: postToSave.date,
+          time: postToSave.time,
+          status: postToSave.status,
+        }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`API Error: ${response.status}`);
@@ -184,8 +195,18 @@ useEffect(() => {
       throw new Error('Không lưu được lịch đăng.');
     }
 
-    setPosts((prev) => [...prev, newPost]);
+    if (isEditing) {
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId ? postToSave : post
+        )
+      );
+    } else {
+      setPosts((prev) => [...prev, postToSave]);
+    }
+
     setShowModal(false);
+    setEditingPostId(null);
 
     setForm({
       title: '',
@@ -198,12 +219,30 @@ useEffect(() => {
 
   } catch (error) {
     console.error('Calendar save error:', error);
-    setApiError('Lưu lịch thất bại. Kiểm tra kết nối n8n và thử lại.');
+    setApiError(
+      isEditing
+        ? 'Cập nhật lịch thất bại. Kiểm tra kết nối n8n và thử lại.'
+        : 'Lưu lịch thất bại. Kiểm tra kết nối n8n và thử lại.'
+    );
   } finally {
     setIsSaving(false);
   }
 };
 
+const handleEditPost = (post: CalendarPost) => {
+  setEditingPostId(post.id);
+
+  setForm({
+    title: post.title,
+    product: post.product,
+    platform: post.platform,
+    date: post.date,
+    time: post.time,
+    status: post.status,
+  });
+
+  setShowModal(true);
+};
 
   const deletePost = async (id: string) => {
   if (!window.confirm('M muốn xóa lịch đăng này?')) return;
@@ -292,7 +331,18 @@ useEffect(() => {
         </div>
 
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+  setEditingPostId(null);
+  setForm({
+    title: '',
+    product: '',
+    platform: 'Facebook',
+    date: new Date().toISOString().slice(0, 10),
+    time: '09:00',
+    status: 'Draft',
+  });
+  setShowModal(true);
+}}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
         >
           <Plus size={17} />
@@ -486,6 +536,13 @@ useEffect(() => {
                   <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[post.status]}`}>
                     {post.status}
                   </span>
+                                    <button
+                    onClick={() => handleEditPost(post)}
+                    className="rounded-lg p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                    title="Chỉnh sửa lịch đăng"
+                  >
+                    <Pencil size={16} />
+                  </button>
                   <button
                     onClick={() => deletePost(post.id)}
                     className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
@@ -506,18 +563,24 @@ useEffect(() => {
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Tạo lịch đăng mới</h2>
+                <h2 className="text-lg font-bold text-gray-900">
+  {editingPostId ? 'Chỉnh sửa lịch đăng' : 'Tạo lịch đăng mới'}
+</h2>
                 <p className="mt-1 text-xs text-gray-500">Thêm nội dung vào Content Calendar</p>
               </div>
               <button
-                onClick={() => setShowModal(false)}
+                disabled={isSaving}
+                onClick={() => {
+  setShowModal(false);
+  setEditingPostId(null);
+}}
                 className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"
               >
                 <X size={19} />
               </button>
             </div>
 
-            <form onSubmit={handleCreatePost} className="space-y-4">
+         <form onSubmit={handleSavePost} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
                   Tên nội dung *
@@ -569,6 +632,7 @@ useEffect(() => {
                     <option value="Draft">Draft</option>
                     <option value="Approved">Approved</option>
                     <option value="Scheduled">Scheduled</option>
+                    <option value="Published">Published</option>
                   </select>
                 </div>
               </div>
@@ -600,21 +664,30 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+                         <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  disabled={isSaving}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingPostId(null);
+                  }}
+                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                 >
                   Hủy
                 </button>
-               <button
-  type="submit"
-  disabled={isSaving}
-  className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
->
-  {isSaving ? 'Đang lưu...' : 'Tạo lịch'}
-</button>
+
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSaving
+                    ? 'Đang lưu...'
+                    : editingPostId
+                      ? 'Lưu thay đổi'
+                      : 'Tạo lịch'}
+                </button>
               </div>
             </form>
           </div>
