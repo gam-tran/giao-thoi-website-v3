@@ -205,10 +205,42 @@ useEffect(() => {
 };
 
 
-  const deletePost = (id: string) => {
-    if (!window.confirm('M muốn xóa lịch đăng này?')) return;
+  const deletePost = async (id: string) => {
+  if (!window.confirm('M muốn xóa lịch đăng này?')) return;
+
+  try {
+    setApiError('');
+
+    const response = await fetch(
+      `${CALENDAR_API_BASE}/webhook/giaothoi-calendar-delete`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postId: id,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error('Không thể xóa lịch đăng.');
+    }
+
     setPosts((prev) => prev.filter((post) => post.id !== id));
-  };
+
+  } catch (error) {
+    console.error('Calendar delete error:', error);
+    setApiError('Xóa lịch thất bại. Kiểm tra kết nối n8n và thử lại.');
+  }
+};
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
