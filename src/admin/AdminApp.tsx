@@ -45,7 +45,7 @@ type AdminPage =
   | 'automation'
   | 'library'
   | 'settings'
-  | 'approval';
+  | 'approval'
   | 'calendar';
 
 const navigation = [
