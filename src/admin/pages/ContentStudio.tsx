@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 const CONTENT_API_URL = '/api/n8n/giaothoi-content-studio';
+const SAVE_API_URL = '/api/n8n/giaothoi-content-library-save';
 
 type ContentRequest = {
   product: string;
@@ -70,6 +71,8 @@ export default function ContentStudio() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const updateField = (
     field: keyof ContentRequest,
@@ -90,6 +93,7 @@ export default function ContentStudio() {
     setLoading(true);
     setError('');
     setCopied(false);
+    setSaved(false);
 
     try {
       const response = await fetch(CONTENT_API_URL, {
@@ -141,6 +145,42 @@ export default function ContentStudio() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setError('Không thể sao chép nội dung trên trình duyệt này.');
+    }
+  };
+
+  const saveToLibrary = async () => {
+    if (!draft.trim()) return;
+
+    setSaving(true);
+    setError('');
+    setSaved(false);
+
+    try {
+      const contentId = `GT-${Date.now()}`;
+      const response = await fetch(SAVE_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentId,
+          product: form.product,
+          platform: form.platform,
+          contentType: form.contentType,
+          objective: form.objective,
+          content: draft,
+          status: 'Draft',
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'Không thể lưu bài viết vào thư viện.');
+      }
+
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Có lỗi khi lưu bài viết.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -388,20 +428,34 @@ export default function ContentStudio() {
           )}
 
           {draft && (
-            <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
               <span className="text-xs text-gray-400">
                 Bản nháp có thể chỉnh sửa
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setDraft('');
-                  setError('');
-                }}
-                className="text-sm font-medium text-gray-500 hover:text-red-600"
-              >
-                Xóa bản nháp
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {saved && (
+                  <span className="text-sm font-medium text-green-700">Đã lưu vào thư viện</span>
+                )}
+                <button
+                  type="button"
+                  onClick={saveToLibrary}
+                  disabled={saving || saved}
+                  className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? 'Đang lưu...' : saved ? 'Đã lưu' : 'Lưu vào thư viện'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraft('');
+                    setError('');
+                    setSaved(false);
+                  }}
+                  className="text-sm font-medium text-gray-500 hover:text-red-600"
+                >
+                  Xóa bản nháp
+                </button>
+              </div>
             </div>
           )}
         </div>
