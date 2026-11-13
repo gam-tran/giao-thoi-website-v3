@@ -32,7 +32,6 @@ import {
   TrendingUp,
   Workflow,
   ClipboardCheck,
-  CalendarDays,
 } from 'lucide-react';
 
 type AdminPage =
