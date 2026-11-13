@@ -75,8 +75,7 @@ const pageDescriptions: Record<AdminPage, string> = {
   automation: 'Quản lý workflow, lịch chạy và hoạt động tự động hóa.',
 };
 
-const DASHBOARD_API_URL =
-  'http://localhost:5678/webhook/giaothoi-dashboard';
+const DASHBOARD_API_URL = '/api/n8n/giaothoi-dashboard';
 
 type DashboardMetrics = {
   sessions: number;
