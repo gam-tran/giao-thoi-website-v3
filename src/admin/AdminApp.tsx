@@ -46,7 +46,7 @@ type AdminPage =
   | 'library'
   | 'settings'
   | 'approval';
-  | 'calendar'
+  | 'calendar';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'OVERVIEW' },
