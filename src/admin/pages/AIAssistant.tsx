@@ -16,8 +16,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-const ASSISTANT_API_URL =
-  'http://localhost:5678/webhook/giaothoi-ai-assistant';
+const ASSISTANT_API_URL = '/api/n8n/giaothoi-ai-assistant';
 
 type ChatMessage = {
   role: 'user' | 'assistant';
