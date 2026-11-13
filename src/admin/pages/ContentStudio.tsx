@@ -14,8 +14,7 @@ import {
   WandSparkles,
 } from 'lucide-react';
 
-const CONTENT_API_URL =
-  'http://localhost:5678/webhook/giaothoi-content-studio';
+const CONTENT_API_URL = '/api/n8n/giaothoi-content-studio';
 
 type ContentRequest = {
   product: string;
