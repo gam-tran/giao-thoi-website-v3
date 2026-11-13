@@ -240,43 +240,35 @@ const handleEditPost = (post: CalendarPost) => {
   const deletePost = async (id: string) => {
   if (!window.confirm('M muốn xóa lịch đăng này?')) return;
 
-  try {
-    setApiError('');
+try {
+  setApiError('');
 
-   const response = await fetch(CALENDAR_API_URL, {
-  method: 'DELETE',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ postId: id }),
-});
-      {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          postId: id,
-        }),
-      }
-    );
+  const response = await fetch(CALENDAR_API_URL, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      postId: id,
+    }),
+  });
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error('Không thể xóa lịch đăng.');
-    }
-
-    setPosts((prev) => prev.filter((post) => post.id !== id));
-
-  } catch (error) {
-    console.error('Calendar delete error:', error);
-    setApiError('Xóa lịch thất bại. Kiểm tra kết nối n8n và thử lại.');
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status}`);
   }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error('Không thể xóa lịch đăng.');
+  }
+
+  setPosts((prev) => prev.filter((post) => post.id !== id));
+
+} catch (error) {
+  console.error('Calendar delete error:', error);
+  setApiError('Xóa lịch thất bại. Kiểm tra kết nối n8n và thử lại.');
+}
 };
 
   const today = new Date();
