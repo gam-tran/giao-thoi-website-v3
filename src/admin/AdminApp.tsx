@@ -5,6 +5,7 @@ import AIAssistant from './pages/AIAssistant';
 import Analytics from './pages/Analytics';
 import MarketingInsights from './pages/MarketingInsights';
 import AutomationCenter from './pages/AutomationCenter';
+import ContentApproval from './pages/ContentApproval';
 import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
@@ -29,6 +30,7 @@ import {
   Activity,
   TrendingUp,
   Workflow,
+  ClipboardCheck,
 } from 'lucide-react';
 
 type AdminPage =
@@ -40,7 +42,8 @@ type AdminPage =
   | 'campaign'
   | 'automation'
   | 'library'
-  | 'settings';
+  | 'settings'
+  | 'approval';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'OVERVIEW' },
@@ -48,6 +51,7 @@ const navigation = [
   { id: 'analytics', label: 'Analytics', icon: ChartNoAxesCombined, group: 'WORKSPACE' },
   { id: 'insights', label: 'Marketing Insights', icon: Lightbulb, group: 'WORKSPACE' },
   { id: 'content', label: 'Content Studio', icon: PenTool, group: 'WORKSPACE' },
+  { id: 'approval', label: 'Content Approval', icon: ClipboardCheck, group: 'WORKSPACE' },
   { id: 'campaign', label: 'Campaign Planner', icon: CalendarDays, group: 'WORKSPACE' },
   { id: 'automation', label: 'Automation Center', icon: Workflow, group: 'MANAGEMENT' },
   { id: 'library', label: 'Brand Library', icon: Library, group: 'MANAGEMENT' },
@@ -60,6 +64,7 @@ const pageDescriptions: Record<AdminPage, string> = {
   analytics: 'Phân tích dữ liệu website và hành vi người dùng từ GA4.',
   insights: 'Khám phá insight và đề xuất hành động dựa trên dữ liệu.',
   content: 'Lên ý tưởng, sáng tạo và quản lý nội dung Marketing.',
+  approval: 'Kiểm tra, phê duyệt hoặc từ chối nội dung Marketing do AI tạo.',
   campaign: 'Xây dựng và quản lý kế hoạch chiến dịch Marketing.',
   library: 'Tra cứu kiến thức thương hiệu và dữ liệu sản phẩm.',
   settings: 'Quản lý kết nối dữ liệu và cấu hình hệ thống.',
@@ -776,6 +781,8 @@ const AdminApp: React.FC = () => {
   <MarketingInsights />
 ) : activePage === 'content' ? (
   <ContentStudio />
+) : activePage === 'approval' ? (
+  <ContentApproval />
 ) : activePage === 'campaign' ? (
   <CampaignPlanner />
 ) : activePage === 'automation' ? (
