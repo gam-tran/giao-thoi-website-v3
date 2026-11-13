@@ -29,13 +29,7 @@ type CalendarPost = {
 };
 
 const initialPosts: CalendarPost[] = [];
-const CALENDAR_API_BASE = (
-  import.meta.env.VITE_N8N_BASE_URL || 'http://localhost:5678'
-).replace(/\/$/, '');
-
-const CALENDAR_GET_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar`;
-const CALENDAR_SAVE_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar-save`;
-const CALENDAR_UPDATE_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar-update`;
+const CALENDAR_API_URL = '/api/calendar';
 
 const statusStyles: Record<PostStatus, string> = {
   Draft: 'bg-gray-100 text-gray-600',
@@ -69,7 +63,9 @@ useEffect(() => {
       setIsLoading(true);
       setApiError('');
 
-      const response = await fetch(CALENDAR_GET_URL);
+     const response = await fetch(CALENDAR_API_URL, {
+  method: 'GET',
+});
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -166,24 +162,21 @@ const handleSavePost = async (e: React.FormEvent) => {
     setIsSaving(true);
     setApiError('');
 
-    const response = await fetch(
-      isEditing ? CALENDAR_UPDATE_URL : CALENDAR_SAVE_URL,
-      {
-        method: isEditing ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          postId: postToSave.id,
-          title: postToSave.title,
-          product: postToSave.product,
-          platform: postToSave.platform,
-          date: postToSave.date,
-          time: postToSave.time,
-          status: postToSave.status,
-        }),
-      }
-    );
+    const response = await fetch(CALENDAR_API_URL, {
+  method: isEditing ? 'PUT' : 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    postId: postToSave.id,
+    title: postToSave.title,
+    product: postToSave.product,
+    platform: postToSave.platform,
+    date: postToSave.date,
+    time: postToSave.time,
+    status: postToSave.status,
+  }),
+});
 
     if (!response.ok) {
       throw new Error(`API Error: ${response.status}`);
@@ -250,8 +243,13 @@ const handleEditPost = (post: CalendarPost) => {
   try {
     setApiError('');
 
-    const response = await fetch(
-      `${CALENDAR_API_BASE}/webhook/giaothoi-calendar-delete`,
+   const response = await fetch(CALENDAR_API_URL, {
+  method: 'DELETE',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ postId: id }),
+});
       {
         method: 'DELETE',
         headers: {
