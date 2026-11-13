@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const API_URL = 'http://localhost:5678/webhook/giaothoi-marketing-insights';
+const API_URL = '/api/n8n/giaothoi-marketing-insights';
 
 type InsightsResponse = {
   success: boolean;
