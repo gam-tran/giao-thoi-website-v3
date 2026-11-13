@@ -10,6 +10,7 @@ export default async function handler(req: any, res: any) {
     'giaothoi-analytics': { method: 'POST', path: '/webhook/giaothoi-analytics' },
     'giaothoi-marketing-insights': { method: 'POST', path: '/webhook/giaothoi-marketing-insights' },
     'giaothoi-content-library': { method: 'GET', path: '/webhook/giaothoi-content-library' },
+    'giaothoi-content-library-save': { method: 'POST', path: '/webhook/giaothoi-content-library-save' },
     'giaothoi-content-approval': { method: 'POST', path: '/webhook/giaothoi-content-approval' },
     'giaothoi-automation-workflows': { method: 'GET', path: '/webhook/giaothoi-automation-workflows' },
     'giaothoi-automation-executions': { method: 'GET', path: '/webhook/giaothoi-automation-executions' },
