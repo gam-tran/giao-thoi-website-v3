@@ -3,6 +3,7 @@ export default async function handler(req: any, res: any) {
   const route = Array.isArray(routeValue) ? routeValue.join('/') : routeValue;
 
   const webhooks: Record<string, { method: string; path: string }> = {
+    'giaothoi-dashboard': { method: 'GET', path: '/webhook/giaothoi-dashboard' },
     'giaothoi-ai-assistant': { method: 'POST', path: '/webhook/giaothoi-ai-assistant' },
     'giaothoi-content-studio': { method: 'POST', path: '/webhook/giaothoi-content-studio' },
     'giaothoi-campaign-planner': { method: 'POST', path: '/webhook/giaothoi-campaign-planner' },
