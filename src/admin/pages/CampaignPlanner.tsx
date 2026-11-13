@@ -19,8 +19,7 @@ import {
   Globe,
 } from 'lucide-react';
 
-const CAMPAIGN_API_URL =
-  'http://localhost:5678/webhook/giaothoi-campaign-planner';
+const CAMPAIGN_API_URL = '/api/n8n/giaothoi-campaign-planner';
 
 type CampaignRequest = {
   campaignName: string;
