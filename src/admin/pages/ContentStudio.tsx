@@ -73,6 +73,7 @@ export default function ContentStudio() {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedContentId, setSavedContentId] = useState('');
 
   const updateField = (
     field: keyof ContentRequest,
@@ -148,41 +149,49 @@ export default function ContentStudio() {
     }
   };
 
-  const saveToLibrary = async () => {
-    if (!draft.trim()) return;
+const saveToLibrary = async () => {
+  if (!draft.trim()) return;
 
-    setSaving(true);
-    setError('');
-    setSaved(false);
+  setSaving(true);
+  setError('');
+  setSaved(false);
+  setSavedContentId('');
 
-    try {
-      const contentId = `GT-${Date.now()}`;
-      const response = await fetch(SAVE_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contentId,
-          product: form.product,
-          platform: form.platform,
-          contentType: form.contentType,
-          objective: form.objective,
-          content: draft,
-          status: 'Draft',
-        }),
-      });
+  try {
+    const contentId = `GT-${Date.now()}`;
 
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || 'Không thể lưu bài viết vào thư viện.');
-      }
+    const response = await fetch(SAVE_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contentId,
+        product: form.product,
+        platform: form.platform,
+        contentType: form.contentType,
+        objective: form.objective,
+        content: draft,
+        status: 'Draft',
+      }),
+    });
 
-      setSaved(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Có lỗi khi lưu bài viết.');
-    } finally {
-      setSaving(false);
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || result.success === false) {
+      throw new Error(
+        result.message || 'Không thể lưu bài viết vào thư viện.'
+      );
     }
-  };
+
+    setSavedContentId(result.contentId || contentId);
+    setSaved(true);
+  } catch (err) {
+    setError(
+      err instanceof Error ? err.message : 'Có lỗi khi lưu bài viết.'
+    );
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -434,8 +443,10 @@ export default function ContentStudio() {
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 {saved && (
-                  <span className="text-sm font-medium text-green-700">Đã lưu vào thư viện</span>
-                )}
+  <span className="text-sm font-medium text-green-700">
+    Đã lưu vào thư viện · ID: {savedContentId}
+  </span>
+)}
                 <button
                   type="button"
                   onClick={saveToLibrary}
