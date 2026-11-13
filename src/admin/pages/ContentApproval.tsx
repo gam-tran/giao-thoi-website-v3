@@ -13,11 +13,9 @@ type ContentItem = {
   approvedAt?: string;
 };
 
-const LIBRARY_API =
-  'http://localhost:5678/webhook/giaothoi-content-library';
+const LIBRARY_API = '/api/n8n/giaothoi-content-library';
 
-const APPROVAL_API =
-  'http://localhost:5678/webhook/giaothoi-content-approval';
+const APPROVAL_API = '/api/n8n/giaothoi-content-approval';
 
 const ContentApproval: React.FC = () => {
   const [contents, setContents] = useState<ContentItem[]>([]);
