@@ -15,8 +15,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 
-const ANALYTICS_API_URL =
-  'http://localhost:5678/webhook/giaothoi-analytics';
+const ANALYTICS_API_URL = '/api/n8n/giaothoi-analytics';
 
 type AnalyticsData = {
   overview: {
