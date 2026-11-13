@@ -14,11 +14,11 @@ import {
 } from 'lucide-react';
 
 const API = {
-  workflows: 'http://localhost:5678/webhook/giaothoi-automation-workflows',
-  executions: 'http://localhost:5678/webhook/giaothoi-automation-executions',
-  schedules: 'http://localhost:5678/webhook/giaothoi-schedules',
-  control: 'http://localhost:5678/webhook/giaothoi-automation-control',
-  run: 'http://localhost:5678/webhook/giaothoi-automation-run',
+  workflows: '/api/n8n/giaothoi-automation-workflows',
+  executions: '/api/n8n/giaothoi-automation-executions',
+  schedules: '/api/n8n/giaothoi-schedules',
+  control: '/api/n8n/giaothoi-automation-control',
+  run: '/api/n8n/giaothoi-automation-run',
 };
 
 type WorkflowItem = {
