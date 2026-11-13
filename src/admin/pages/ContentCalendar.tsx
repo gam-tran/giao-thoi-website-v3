@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
   ChevronLeft,
@@ -28,6 +28,12 @@ type CalendarPost = {
 };
 
 const initialPosts: CalendarPost[] = [];
+const CALENDAR_API_BASE = (
+  import.meta.env.VITE_N8N_BASE_URL || 'http://localhost:5678'
+).replace(/\/$/, '');
+
+const CALENDAR_GET_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar`;
+const CALENDAR_SAVE_URL = `${CALENDAR_API_BASE}/webhook/giaothoi-calendar-save`;
 
 const statusStyles: Record<PostStatus, string> = {
   Draft: 'bg-gray-100 text-gray-600',
@@ -42,6 +48,9 @@ const ContentCalendar: React.FC = () => {
   const [filterPlatform, setFilterPlatform] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+const [isSaving, setIsSaving] = useState(false);
+const [apiError, setApiError] = useState('');
 
   const [form, setForm] = useState({
     title: '',
@@ -51,7 +60,51 @@ const ContentCalendar: React.FC = () => {
     time: '09:00',
     status: 'Draft' as PostStatus,
   });
+useEffect(() => {
+  const loadCalendar = async () => {
+    try {
+      setIsLoading(true);
+      setApiError('');
 
+      const response = await fetch(CALENDAR_GET_URL);
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      const rows = Array.isArray(result)
+        ? result
+        : Array.isArray(result.data)
+          ? result.data
+          : result
+            ? [result]
+            : [];
+
+      const loadedPosts: CalendarPost[] = rows.map((row: any) => ({
+        id: String(row.postId || row.id),
+        title: row.title || '',
+        product: row.product || '',
+        platform: row.platform === 'TikTok' ? 'TikTok' : 'Facebook',
+        date: row.date || '',
+        time: row.time || '09:00',
+        status: ['Draft', 'Approved', 'Scheduled', 'Published'].includes(row.status)
+          ? row.status
+          : 'Draft',
+      }));
+
+      setPosts(loadedPosts);
+    } catch (error) {
+      console.error('Calendar loading error:', error);
+      setApiError('Không thể tải lịch đăng. Kiểm tra kết nối n8n.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  loadCalendar();
+}, []);
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -91,15 +144,45 @@ const ContentCalendar: React.FC = () => {
     setCurrentDate(new Date(year, month + amount, 1));
   };
 
-  const handleCreatePost = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreatePost = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!form.title.trim() || !form.date || !form.time) return;
+  if (!form.title.trim() || !form.date || !form.time || isSaving) return;
 
-    const newPost: CalendarPost = {
-      ...form,
-      id: `POST-${Date.now()}`,
-    };
+  const newPost: CalendarPost = {
+    ...form,
+    id: `POST-${Date.now()}`,
+  };
+
+  try {
+    setIsSaving(true);
+    setApiError('');
+
+    const response = await fetch(CALENDAR_SAVE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        postId: newPost.id,
+        title: newPost.title,
+        product: newPost.product,
+        platform: newPost.platform,
+        date: newPost.date,
+        time: newPost.time,
+        status: newPost.status,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error('Không lưu được lịch đăng.');
+    }
 
     setPosts((prev) => [...prev, newPost]);
     setShowModal(false);
@@ -112,7 +195,15 @@ const ContentCalendar: React.FC = () => {
       time: '09:00',
       status: 'Draft',
     });
-  };
+
+  } catch (error) {
+    console.error('Calendar save error:', error);
+    setApiError('Lưu lịch thất bại. Kiểm tra kết nối n8n và thử lại.');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   const deletePost = (id: string) => {
     if (!window.confirm('M muốn xóa lịch đăng này?')) return;
@@ -149,6 +240,23 @@ const ContentCalendar: React.FC = () => {
           <p className="mt-1 text-sm text-gray-500">
             Quản lý lịch đăng và theo dõi trạng thái nội dung Marketing GIAO THỜI.
           </p>
+          {isLoading && (
+  <p className="mt-2 text-xs text-gray-500">
+    Đang tải dữ liệu lịch đăng...
+  </p>
+)}
+
+{apiError && (
+  <p className="mt-2 text-xs text-red-600">
+    {apiError}
+  </p>
+)}
+
+{!isLoading && !apiError && (
+  <p className="mt-2 text-xs text-green-600">
+    Đã đồng bộ dữ liệu lịch đăng.
+  </p>
+)}
         </div>
 
         <button
@@ -468,12 +576,13 @@ const ContentCalendar: React.FC = () => {
                 >
                   Hủy
                 </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700"
-                >
-                  Tạo lịch
-                </button>
+               <button
+  type="submit"
+  disabled={isSaving}
+  className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {isSaving ? 'Đang lưu...' : 'Tạo lịch'}
+</button>
               </div>
             </form>
           </div>
