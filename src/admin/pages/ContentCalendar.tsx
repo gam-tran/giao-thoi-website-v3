@@ -16,10 +16,13 @@ import {
   Filter,
 } from 'lucide-react';
 
-type PostStatus = 'Draft' | 'Approved' | 'Scheduled' | 'Published';
+type PostStatus = 'Draft' | 'Approved' | 'Scheduled' | 'Published' | 'Failed';
+
+type LibraryContent = { contentId: string; product: string; platform: string; contentType: string; objective: string; content: string; status: string; };
 
 type CalendarPost = {
   id: string;
+  contentId: string;
   title: string;
   product: string;
   platform: 'Facebook' | 'TikTok';
@@ -36,10 +39,12 @@ const statusStyles: Record<PostStatus, string> = {
   Approved: 'bg-blue-100 text-blue-700',
   Scheduled: 'bg-amber-100 text-amber-700',
   Published: 'bg-green-100 text-green-700',
+  Failed: 'bg-red-100 text-red-700',
 };
 
 const ContentCalendar: React.FC = () => {
   const [posts, setPosts] = useState<CalendarPost[]>(initialPosts);
+  const [approvedContents, setApprovedContents] = useState<LibraryContent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterPlatform, setFilterPlatform] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -50,6 +55,7 @@ const [isSaving, setIsSaving] = useState(false);
 const [apiError, setApiError] = useState('');
 
   const [form, setForm] = useState({
+    contentId: '',
     title: '',
     product: '',
     platform: 'Facebook' as 'Facebook' | 'TikTok',
@@ -83,14 +89,15 @@ useEffect(() => {
 
       const loadedPosts: CalendarPost[] = rows.map((row: any) => ({
         id: String(row.postId || row.id),
+        contentId: row.contentId || '',
         title: row.title || '',
         product: row.product || '',
         platform: row.platform === 'TikTok' ? 'TikTok' : 'Facebook',
         date: row.date || '',
         time: row.time || '09:00',
-        status: ['Draft', 'Approved', 'Scheduled', 'Published'].includes(row.status)
+        status: ['Draft', 'Approved', 'Scheduled', 'Published', 'Failed'].includes(row.status)
           ? row.status
-          : 'Draft',
+          : 'Scheduled',
       }));
 
       setPosts(loadedPosts);
@@ -147,7 +154,7 @@ useEffect(() => {
 const handleSavePost = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  if (!form.title.trim() || !form.date || !form.time || isSaving) return;
+  if ((!form.contentId && !editingPostId) || !form.title.trim() || !form.date || !form.time || isSaving) return;
 
   const postId = editingPostId || `POST-${Date.now()}`;
 
@@ -169,6 +176,7 @@ const handleSavePost = async (e: React.FormEvent) => {
   },
   body: JSON.stringify({
     postId: postToSave.id,
+    contentId: postToSave.contentId,
     title: postToSave.title,
     product: postToSave.product,
     platform: postToSave.platform,
@@ -226,6 +234,7 @@ const handleEditPost = (post: CalendarPost) => {
   setEditingPostId(post.id);
 
   setForm({
+    contentId: post.contentId || '',
     title: post.title,
     product: post.product,
     platform: post.platform,
