@@ -102,7 +102,7 @@ const ContentApproval: React.FC = () => {
         );
 
   const pendingCount = contents.filter(
-    item => item.status === 'Draft'
+    item => item.status === 'Pending Approval'
   ).length;
 
   const approvedCount = contents.filter(
@@ -157,7 +157,7 @@ const ContentApproval: React.FC = () => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {['All', 'Draft', 'Approved', 'Rejected'].map(status => (
+        {['All', 'Pending Approval', 'Approved', 'Rejected'].map(status => (
           <button
             key={status}
             onClick={() => setFilter(status)}
@@ -188,7 +188,7 @@ const ContentApproval: React.FC = () => {
             Chưa có nội dung
           </h3>
           <p className="mt-2 text-sm text-[#929A93]">
-            Nội dung được lưu từ Content Studio sẽ xuất hiện tại đây.
+            Chỉ những nội dung được gửi duyệt từ Content Studio mới xuất hiện trong danh sách chờ phê duyệt.
           </p>
         </div>
       ) : (
@@ -233,8 +233,7 @@ const ContentApproval: React.FC = () => {
                   Objective: {item.objective || 'Not specified'}
                 </p>
 
-                {item.status !== 'Approved' &&
-                  item.status !== 'Rejected' && (
+                {item.status === 'Pending Approval' && (
                     <div className="flex gap-2">
                       <button
                         disabled={updating === item.contentId}
