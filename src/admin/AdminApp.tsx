@@ -21,7 +21,6 @@ import {
   Bell,
   Search,
   Menu,
-  ChevronDown,
   Sparkles,
   CircleHelp,
   PanelLeftClose,
@@ -378,18 +377,11 @@ const AdminApp: React.FC<AdminAppProps> = ({ userEmail, roles, onSignOut }) => {
 
             <div className="h-8 w-px bg-[#E8EBE7] hidden sm:block" />
 
-            <button className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#E9E1D3] text-[#69563B] flex items-center justify-center text-xs font-semibold">
-                GT
-              </div>
-              <span className="hidden md:block text-xs font-medium">
-                Admin
-              </span>
-              <ChevronDown
-                size={14}
-                className="text-[#929A93] hidden md:block"
-              />
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#E9E1D3] text-[#69563B] flex items-center justify-center text-xs font-semibold">{(userEmail[0] || 'U').toUpperCase()}</div>
+              <span className="hidden md:block text-xs font-medium max-w-[170px] truncate" title={userEmail}>{userEmail}</span>
+              <button type="button" onClick={onSignOut} title="Đăng xuất" className="p-2 rounded-lg hover:bg-[#F2F4F1] text-[#647067]"><LogOut size={16} /></button>
+            </div>
           </div>
         </header>
 
