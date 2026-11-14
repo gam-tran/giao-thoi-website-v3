@@ -6,8 +6,8 @@ export async function authenticateRequest(req: any, res: any, allowedRoles: AppR
     ? authorization.slice(7)
     : '';
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL?.replace(/\/$/, '');
-  const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)?.replace(/\/$/, '');
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   if (!token) {
     res.status(401).json({ success: false, message: 'Authentication required' });
