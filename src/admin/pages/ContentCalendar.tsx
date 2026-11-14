@@ -181,6 +181,7 @@ const handleSavePost = async (e: React.FormEvent) => {
   const postToSave: CalendarPost = {
     ...form,
     id: postId,
+    status: editingPostId ? form.status : 'Scheduled',
   };
 
   const isEditing = Boolean(editingPostId);
@@ -230,12 +231,13 @@ const handleSavePost = async (e: React.FormEvent) => {
     setEditingPostId(null);
 
     setForm({
+      contentId: '',
       title: '',
       product: '',
       platform: 'Facebook',
       date: new Date().toISOString().slice(0, 10),
       time: '09:00',
-      status: 'Draft',
+      status: 'Scheduled',
     });
 
   } catch (error) {
@@ -353,12 +355,13 @@ try {
           onClick={() => {
   setEditingPostId(null);
   setForm({
+    contentId: '',
     title: '',
     product: '',
     platform: 'Facebook',
     date: new Date().toISOString().slice(0, 10),
     time: '09:00',
-    status: 'Draft',
+    status: 'Scheduled',
   });
   setShowModal(true);
 }}
@@ -602,28 +605,20 @@ try {
          <form onSubmit={handleSavePost} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Tên nội dung *
+                  Chọn nội dung đã duyệt *
                 </label>
-                <input
-                  required
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Ví dụ: Bài viết giới thiệu nón lá lụa gấm"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-gray-500"
-                />
+                <select required value={form.contentId} onChange={(e) => {
+                  const selected = approvedContents.find(item => item.contentId === e.target.value);
+                  setForm({ ...form, contentId: selected ? selected.contentId : "", title: selected ? selected.product + " - " + selected.contentType : "", product: selected ? selected.product : "", platform: selected && selected.platform === "TikTok" ? "TikTok" : "Facebook", status: editingPostId ? form.status : "Scheduled" });
+                }} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
+                  <option value="">-- Chọn bài trong Content Library --</option>
+                  {approvedContents.map(item => <option key={item.contentId} value={item.contentId}>{item.product} · {item.platform} · {item.contentType} ({item.contentId})</option>)}
+                </select>
+                <p className="mt-1.5 text-xs text-gray-500">Chỉ hiển thị nội dung đã duyệt trên Facebook hoặc TikTok.</p>
+                {approvedContents.length === 0 && <p className="mt-2 text-xs text-amber-700">Chưa có nội dung phù hợp. Hãy gửi bài từ Content Studio và duyệt tại Content Approval trước.</p>}
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                  Sản phẩm
-                </label>
-                <input
-                  value={form.product}
-                  onChange={(e) => setForm({ ...form, product: e.target.value })}
-                  placeholder="Tên sản phẩm"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-gray-500"
-                />
-              </div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">Sản phẩm: <strong>{form.product || "Chưa chọn nội dung"}</strong> · Nền tảng: <strong>{form.platform}</strong></div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -639,21 +634,7 @@ try {
                     <option value="TikTok">TikTok</option>
                   </select>
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                    Trạng thái
-                  </label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value as PostStatus })}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
-                  >
-                    <option value="Draft">Draft</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="Published">Published</option>
-                  </select>
-                </div>
+                <div className="self-center text-xs text-gray-500">Trạng thái lịch mới: <strong>Scheduled</strong></div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
