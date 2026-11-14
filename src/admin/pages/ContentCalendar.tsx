@@ -313,8 +313,8 @@ try {
   const stats = {
     total: posts.length,
     scheduled: posts.filter((p) => p.status === 'Scheduled').length,
-    approved: posts.filter((p) => p.status === 'Approved').length,
     published: posts.filter((p) => p.status === 'Published').length,
+    failed: posts.filter((p) => p.status === 'Failed').length,
   };
 
   return (
@@ -377,8 +377,8 @@ try {
         {[
           { label: 'Tổng nội dung', value: stats.total, icon: CalendarDays },
           { label: 'Đã lên lịch', value: stats.scheduled, icon: Clock },
-          { label: 'Đã duyệt', value: stats.approved, icon: CheckCircle2 },
-          { label: 'Đã đăng', value: stats.published, icon: Circle },
+          { label: 'Đã đăng', value: stats.published, icon: CheckCircle2 },
+          { label: 'Đăng thất bại', value: stats.failed, icon: Circle },
         ].map((item) => (
           <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="flex items-center justify-between">
@@ -443,6 +443,7 @@ try {
               <option value="Approved">Approved</option>
               <option value="Scheduled">Scheduled</option>
               <option value="Published">Published</option>
+              <option value="Failed">Failed</option>
             </select>
           </div>
         </div>
