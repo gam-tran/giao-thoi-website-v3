@@ -7,6 +7,7 @@ type Role = 'admin' | 'creator' | 'approver' | 'publisher';
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,13 +22,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setSession(data.session);
-    });
+      if (mounted) {
+        setSession(data.session);
+        setLoading(false);
+      }
+    }).catch(() => { if (mounted) setLoading(false); });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (mounted) setSession(nextSession);
     });
-    setLoading(false);
-
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
@@ -35,12 +37,31 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!supabase) return;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const requestHeaders = input instanceof Request ? input.headers : undefined;
+      const headers = new Headers(init?.headers ?? requestHeaders);
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith('/api/') || url.startsWith(window.location.origin + '/api/')) {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (token) headers.set('Authorization', `Bearer ${token}`);
+      }
+      return originalFetch(input, { ...init, headers });
+    };
+    return () => { window.fetch = originalFetch; };
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     async function loadRoles() {
       if (!supabase || !session?.user) {
         setRoles([]);
+        setRolesLoading(false);
         return;
       }
+      setRolesLoading(true);
       const { data, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -52,8 +73,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         return;
       }
       setRoles((data ?? []).map((item) => item.role as Role));
+      setRolesLoading(false);
     }
-    loadRoles();
+    loadRoles().catch(() => {
+      if (mounted) {
+        setError('Không thể tải vai trò tài khoản. Vui lòng liên hệ Admin.');
+        setRoles([]);
+        setRolesLoading(false);
+      }
+    });
     return () => { mounted = false; };
   }, [session]);
 
@@ -87,6 +115,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <button disabled={busy} className="w-full rounded-lg bg-[#1F3029] text-white py-3 font-medium disabled:opacity-60">{busy ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
     </form></div>;
   }
+
+  if (rolesLoading) return <div className="min-h-screen grid place-items-center bg-[#F6F7F5]">Đang kiểm tra quyền truy cập...</div>;
 
   if (roles.length === 0) {
     return <div className="min-h-screen grid place-items-center bg-[#F6F7F5] p-6"><div className="max-w-md bg-white rounded-2xl border p-6"><h1 className="font-semibold text-lg">Tài khoản chưa được cấp quyền</h1><p className="text-sm text-gray-600 mt-2">{error || 'Liên hệ Admin GIAO THỜI để được cấp vai trò phù hợp.'}</p><button onClick={() => supabase.auth.signOut()} className="mt-5 text-sm underline">Đăng xuất</button></div></div>;
