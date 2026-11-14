@@ -70,6 +70,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       if (roleError) {
         setError('Không thể tải vai trò tài khoản. Vui lòng liên hệ Admin.');
         setRoles([]);
+        setRolesLoading(false);
         return;
       }
       setRoles((data ?? []).map((item) => item.role as Role));
