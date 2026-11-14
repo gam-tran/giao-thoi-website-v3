@@ -106,5 +106,5 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen grid place-items-center bg-[#F6F7F5] p-6"><div className="max-w-md bg-white rounded-2xl border p-6"><h1 className="font-semibold text-lg">Tài khoản chưa được cấp quyền</h1><p className="text-sm text-gray-600 mt-2">{error || 'Liên hệ Admin GIAO THỜI để được cấp vai trò phù hợp.'}</p><button onClick={() => supabase.auth.signOut()} className="mt-5 text-sm underline">Đăng xuất</button></div></div>;
   }
 
-  return <>{children}</>;
+  return <>{React.isValidElement(children) ? React.cloneElement(children as React.ReactElement<any>, { userEmail: session.user.email ?? '', roles, onSignOut: () => { void supabase.auth.signOut(); } }) : children}</>;
 }
