@@ -33,6 +33,7 @@ import {
   TrendingUp,
   Workflow,
   ClipboardCheck,
+  LogOut,
 } from 'lucide-react';
 
 type AdminPage =
@@ -50,18 +51,18 @@ type AdminPage =
   | 'contentLibrary';
 
 const navigation = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'OVERVIEW' },
-  { id: 'assistant', label: 'AI Assistant', icon: MessageSquare, group: 'WORKSPACE' },
-  { id: 'analytics', label: 'Analytics', icon: ChartNoAxesCombined, group: 'WORKSPACE' },
-  { id: 'insights', label: 'Marketing Insights', icon: Lightbulb, group: 'WORKSPACE' },
-  { id: 'content', label: 'Content Studio', icon: PenTool, group: 'WORKSPACE' },
-  { id: 'contentLibrary', label: 'Content Library', icon: Library, group: 'WORKSPACE' },
-  { id: 'approval', label: 'Content Approval', icon: ClipboardCheck, group: 'WORKSPACE' },
-  { id: 'calendar', label: 'Content Calendar', icon: CalendarDays, group: 'WORKSPACE' },
-  { id: 'campaign', label: 'Campaign Planner', icon: CalendarDays, group: 'WORKSPACE' },
-  { id: 'automation', label: 'Automation Center', icon: Workflow, group: 'MANAGEMENT' },
-  { id: 'library', label: 'Brand Library', icon: Library, group: 'MANAGEMENT' },
-  { id: 'settings', label: 'Settings', icon: Settings, group: 'MANAGEMENT' },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'OVERVIEW', roles: ['admin', 'creator', 'approver', 'publisher'] },
+  { id: 'assistant', label: 'AI Assistant', icon: MessageSquare, group: 'WORKSPACE', roles: ['admin', 'creator'] },
+  { id: 'analytics', label: 'Analytics', icon: ChartNoAxesCombined, group: 'WORKSPACE', roles: ['admin', 'creator', 'approver', 'publisher'] },
+  { id: 'insights', label: 'Marketing Insights', icon: Lightbulb, group: 'WORKSPACE', roles: ['admin', 'creator', 'approver', 'publisher'] },
+  { id: 'content', label: 'Content Studio', icon: PenTool, group: 'WORKSPACE', roles: ['admin', 'creator'] },
+  { id: 'contentLibrary', label: 'Content Library', icon: Library, group: 'WORKSPACE', roles: ['admin', 'creator', 'approver', 'publisher'] },
+  { id: 'approval', label: 'Content Approval', icon: ClipboardCheck, group: 'WORKSPACE', roles: ['admin', 'approver'] },
+  { id: 'calendar', label: 'Content Calendar', icon: CalendarDays, group: 'WORKSPACE', roles: ['admin', 'publisher'] },
+  { id: 'campaign', label: 'Campaign Planner', icon: CalendarDays, group: 'WORKSPACE', roles: ['admin', 'creator'] },
+  { id: 'automation', label: 'Automation Center', icon: Workflow, group: 'MANAGEMENT', roles: ['admin'] },
+  { id: 'library', label: 'Brand Library', icon: Library, group: 'MANAGEMENT', roles: ['admin', 'creator', 'approver', 'publisher'] },
+  { id: 'settings', label: 'Settings', icon: Settings, group: 'MANAGEMENT', roles: ['admin'] },
 ] as const;
 
 const pageDescriptions: Record<AdminPage, string> = {
@@ -120,7 +121,11 @@ const formatDate = (date: string) => {
   return `${date.slice(6, 8)}/${date.slice(4, 6)}`;
 };
 
-const AdminApp: React.FC = () => {
+type AppRole = 'admin' | 'creator' | 'approver' | 'publisher';
+
+type AdminAppProps = { userEmail: string; roles: AppRole[]; onSignOut: () => void };
+
+const AdminApp: React.FC<AdminAppProps> = ({ userEmail, roles, onSignOut }) => {
   const [activePage, setActivePage] = useState<AdminPage>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -164,7 +169,10 @@ const AdminApp: React.FC = () => {
     fetchDashboardData();
   }, []);
 
-  const currentPage = navigation.find((item) => item.id === activePage);
+  const visibleNavigation = navigation.filter((item) => roles.some((role) => item.roles.includes(role)));
+  const visiblePageIds = visibleNavigation.map((item) => item.id);
+  const safeActivePage = visiblePageIds.includes(activePage) ? activePage : (visibleNavigation[0]?.id as AdminPage) ?? 'dashboard';
+  const currentPage = navigation.find((item) => item.id === safeActivePage);
   const PageIcon = currentPage?.icon ?? LayoutDashboard;
 
   const metrics = data?.overview;
@@ -273,7 +281,7 @@ const AdminApp: React.FC = () => {
 
         <nav className="flex-1 px-3 py-6 overflow-y-auto">
           {['OVERVIEW', 'WORKSPACE', 'MANAGEMENT'].map((group) => {
-            const items = navigation.filter(
+            const items = visibleNavigation.filter(
               (item) => item.group === group
             );
 
@@ -288,7 +296,7 @@ const AdminApp: React.FC = () => {
                 <div className="space-y-1">
                   {items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = activePage === item.id;
+                    const isActive = safeActivePage === item.id;
 
                     return (
                       <button
@@ -348,7 +356,7 @@ const AdminApp: React.FC = () => {
                 {currentPage?.label}
               </h1>
               <p className="text-[11px] text-[#929A93] mt-1 hidden sm:block">
-                {pageDescriptions[activePage]}
+                {pageDescriptions[safeActivePage]}
               </p>
             </div>
           </div>
@@ -387,7 +395,7 @@ const AdminApp: React.FC = () => {
 
         <main className="flex-1 p-5 md:p-8 max-w-[1600px] w-full mx-auto">
 
-          {activePage === 'dashboard' ? (
+          {safeActivePage === 'dashboard' ? (
             <div className="space-y-7">
 
               {/* Welcome */}
@@ -780,23 +788,23 @@ const AdminApp: React.FC = () => {
               </div>
 
             </div>
-                ) : activePage === 'assistant' ? (
+                ) : safeActivePage === 'assistant' ? (
   <AIAssistant />
-) : activePage === 'analytics' ? (
+) : safeActivePage === 'analytics' ? (
   <Analytics />
-) : activePage === 'insights' ? (
+) : safeActivePage === 'insights' ? (
   <MarketingInsights />
-) : activePage === 'content' ? (
+) : safeActivePage === 'content' ? (
   <ContentStudio />
-) : activePage === 'contentLibrary' ? (
+) : safeActivePage === 'contentLibrary' ? (
   <ContentLibrary />
-) : activePage === 'approval' ? (
+) : safeActivePage === 'approval' ? (
   <ContentApproval />
-) : activePage === 'calendar' ? (
+) : safeActivePage === 'calendar' ? (
   <ContentCalendar />
-) : activePage === 'campaign' ? (
+) : safeActivePage === 'campaign' ? (
   <CampaignPlanner />
-) : activePage === 'automation' ? (
+) : safeActivePage === 'automation' ? (
   <AutomationCenter />
 ) : (
   <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
