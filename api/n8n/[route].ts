@@ -1,3 +1,5 @@
+import { authenticateRequest } from '../_lib/auth';
+
 export default async function handler(req: any, res: any) {
   const route = req.query?.route;
 
@@ -19,22 +21,27 @@ export default async function handler(req: any, res: any) {
   };
 
   const webhook = typeof route === 'string' ? webhooks[route] : undefined;
-
-  if (!webhook) {
-    return res.status(404).json({ success: false, message: 'Webhook route not found' });
-  }
+  if (!webhook) return res.status(404).json({ success: false, message: 'Webhook route not found' });
 
   if (req.method !== webhook.method) {
     res.setHeader('Allow', webhook.method);
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
+  const roleMap: Record<string, Array<'admin' | 'creator' | 'approver' | 'publisher'>> = {
+    'giaothoi-content-studio': ['admin', 'creator'],
+    'giaothoi-content-library-save': ['admin', 'creator'],
+    'giaothoi-content-approval': ['admin', 'approver'],
+    'giaothoi-automation-control': ['admin'],
+    'giaothoi-automation-run': ['admin'],
+  };
+  const allowedRoles = roleMap[route] ?? ['admin', 'creator', 'approver', 'publisher'];
+  const user = await authenticateRequest(req, res, allowedRoles);
+  if (!user) return;
+
   const baseUrl = process.env.N8N_BASE_URL?.replace(/\/$/, '');
   const webhookKey = process.env.N8N_WEBHOOK_KEY;
-
-  if (!baseUrl || !webhookKey) {
-    return res.status(500).json({ success: false, message: 'Server configuration is missing' });
-  }
+  if (!baseUrl || !webhookKey) return res.status(500).json({ success: false, message: 'Server configuration is missing' });
 
   try {
     const response = await fetch(`${baseUrl}${webhook.path}`, {
@@ -45,7 +52,6 @@ export default async function handler(req: any, res: any) {
       },
       ...(webhook.method !== 'GET' ? { body: JSON.stringify(req.body ?? {}) } : {}),
     });
-
     const data = await response.text();
     res.setHeader('Cache-Control', 'no-store');
     res.status(response.status);
