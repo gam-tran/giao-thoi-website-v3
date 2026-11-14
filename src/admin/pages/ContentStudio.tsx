@@ -149,7 +149,7 @@ export default function ContentStudio() {
     }
   };
 
-const saveToLibrary = async () => {
+const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
   if (!draft.trim()) return;
 
   setSaving(true);
@@ -170,7 +170,7 @@ const saveToLibrary = async () => {
         contentType: form.contentType,
         objective: form.objective,
         content: draft,
-        status: 'Draft',
+        status,
       }),
     });
 
@@ -443,17 +443,25 @@ const saveToLibrary = async () => {
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 {saved && (
-  <span className="text-sm font-medium text-green-700">
-    Đã lưu vào thư viện · ID: {savedContentId}
-  </span>
-)}
+                  <span className="text-sm font-medium text-green-700">
+                    Đã lưu ({savedContentId})
+                  </span>
+                )}
                 <button
                   type="button"
-                  onClick={saveToLibrary}
+                  onClick={() => saveToLibrary('Draft')}
+                  disabled={saving || saved}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? 'Đang lưu...' : 'Lưu bản nháp'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveToLibrary('Pending Approval')}
                   disabled={saving || saved}
                   className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving ? 'Đang lưu...' : saved ? 'Đã lưu' : 'Lưu vào thư viện'}
+                  {saving ? 'Đang gửi...' : 'Gửi duyệt'}
                 </button>
                 <button
                   type="button"
