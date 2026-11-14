@@ -6,6 +6,7 @@ import Analytics from './pages/Analytics';
 import MarketingInsights from './pages/MarketingInsights';
 import AutomationCenter from './pages/AutomationCenter';
 import ContentApproval from './pages/ContentApproval';
+import ContentLibrary from './pages/ContentLibrary';
 import ContentCalendar from './pages/ContentCalendar';
 import React, { useEffect, useState } from 'react';
 import {
@@ -45,7 +46,8 @@ type AdminPage =
   | 'library'
   | 'settings'
   | 'approval'
-  | 'calendar';
+  | 'calendar'
+  | 'contentLibrary';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'OVERVIEW' },
@@ -53,6 +55,7 @@ const navigation = [
   { id: 'analytics', label: 'Analytics', icon: ChartNoAxesCombined, group: 'WORKSPACE' },
   { id: 'insights', label: 'Marketing Insights', icon: Lightbulb, group: 'WORKSPACE' },
   { id: 'content', label: 'Content Studio', icon: PenTool, group: 'WORKSPACE' },
+  { id: 'contentLibrary', label: 'Content Library', icon: Library, group: 'WORKSPACE' },
   { id: 'approval', label: 'Content Approval', icon: ClipboardCheck, group: 'WORKSPACE' },
   { id: 'calendar', label: 'Content Calendar', icon: CalendarDays, group: 'WORKSPACE' },
   { id: 'campaign', label: 'Campaign Planner', icon: CalendarDays, group: 'WORKSPACE' },
@@ -68,6 +71,7 @@ const pageDescriptions: Record<AdminPage, string> = {
   insights: 'Khám phá insight và đề xuất hành động dựa trên dữ liệu.',
   content: 'Lên ý tưởng, sáng tạo và quản lý nội dung Marketing.',
   approval: 'Kiểm tra, phê duyệt hoặc từ chối nội dung Marketing do AI tạo.',
+  contentLibrary: 'Lưu trữ và tra cứu tập trung các nội dung được tạo từ Content Studio.',
   calendar: 'Quản lý lịch đăng và theo dõi kế hoạch nội dung Marketing GIAO THỜI.',
   campaign: 'Xây dựng và quản lý kế hoạch chiến dịch Marketing.',
   library: 'Tra cứu kiến thức thương hiệu và dữ liệu sản phẩm.',
@@ -784,6 +788,8 @@ const AdminApp: React.FC = () => {
   <MarketingInsights />
 ) : activePage === 'content' ? (
   <ContentStudio />
+) : activePage === 'contentLibrary' ? (
+  <ContentLibrary />
 ) : activePage === 'approval' ? (
   <ContentApproval />
 ) : activePage === 'calendar' ? (
