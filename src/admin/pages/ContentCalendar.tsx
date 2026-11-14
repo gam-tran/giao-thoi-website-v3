@@ -111,6 +111,26 @@ useEffect(() => {
 
   loadCalendar();
 }, []);
+
+useEffect(() => {
+  fetch('/api/n8n/giaothoi-content-library', { cache: 'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error('Không tải được Content Library');
+      return response.json();
+    })
+    .then(payload => {
+      const rows = Array.isArray(payload) ? payload :
+        Array.isArray(payload.data) ? payload.data :
+        Array.isArray(payload.data?.data) ? payload.data.data : [];
+      setApprovedContents(rows.filter((item: LibraryContent) =>
+        item.status === 'Approved' && ['Facebook', 'TikTok'].includes(item.platform)
+      ));
+    })
+    .catch(error => {
+      console.error('Approved content loading error:', error);
+      setApiError('Không thể tải nội dung đã duyệt từ Content Library.');
+    });
+}, []);
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
