@@ -37,23 +37,6 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!supabase) return;
-    const originalFetch = window.fetch.bind(window);
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const requestHeaders = input instanceof Request ? input.headers : undefined;
-      const headers = new Headers(init?.headers ?? requestHeaders);
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      if (url.startsWith('/api/') || url.startsWith(window.location.origin + '/api/')) {
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (token) headers.set('Authorization', `Bearer ${token}`);
-      }
-      return originalFetch(input, { ...init, headers });
-    };
-    return () => { window.fetch = originalFetch; };
-  }, []);
-
-  useEffect(() => {
     let mounted = true;
     async function loadRoles() {
       if (!supabase || !session?.user) {
