@@ -11,13 +11,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [resetMode, setResetMode] = useState(false);
-  const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [resetMessage, setResetMessage] = useState('');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -26,15 +25,32 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
+    if (window.location.hash.includes('type=recovery')) {
+      setResetMode(true);
+    }
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mounted) return;
+      setSession(nextSession);
+      if (event === 'PASSWORD_RECOVERY') {
+        setResetMode(true);
+        setError('');
+        setNotice('');
+      }
+    });
+
+    supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (!mounted) return;
+      if (sessionError) setError('Không thể xác thực phiên khôi phục. Hãy mở lại link trong email.');
+      setSession(data.session);
+      setLoading(false);
+    }).catch(() => {
       if (mounted) {
-        setSession(data.session);
+        setError('Không thể kiểm tra phiên đăng nhập. Vui lòng tải lại trang.');
         setLoading(false);
       }
-    }).catch(() => { if (mounted) setLoading(false); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (mounted) setSession(nextSession);
     });
+
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
@@ -44,7 +60,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     async function loadRoles() {
-      if (!supabase || !session?.user) {
+      if (!supabase || !session?.user || resetMode) {
         setRoles([]);
         setRolesLoading(false);
         return;
@@ -72,7 +88,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       }
     });
     return () => { mounted = false; };
-  }, [session]);
+  }, [session, resetMode]);
 
   const signIn = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -84,10 +100,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setBusy(false);
   };
 
-  const resetPassword = async (event: React.FormEvent) => {
+  const updatePassword = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!supabase) return;
     setError('');
-    setResetMessage('');
+    setNotice('');
     if (newPassword.length < 12 || newPassword.length > 128) {
       setError('Mật khẩu mới phải có từ 12 đến 128 ký tự.');
       return;
@@ -96,27 +113,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       setError('Hai lần nhập mật khẩu mới không khớp.');
       return;
     }
+
     setBusy(true);
-    try {
-      const response = await fetch('/api/admin/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resetToken, password: newPassword }),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.success) {
-        setError(result.message || 'Không thể đặt lại mật khẩu. Kiểm tra cấu hình và thử lại.');
-      } else {
-        setResetMessage('Đã cập nhật mật khẩu. Hãy quay lại màn hình đăng nhập và đăng nhập bằng mật khẩu mới.');
-        setResetToken('');
-        setNewPassword('');
-        setConfirmPassword('');
-      }
-    } catch {
-      setError('Không kết nối được dịch vụ đặt lại mật khẩu. Vui lòng thử lại.');
-    } finally {
-      setBusy(false);
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateError) {
+      setError('Không thể cập nhật mật khẩu: ' + updateError.message + '. Link khôi phục có thể đã hết hạn; hãy yêu cầu gửi lại email.');
+    } else {
+      setNotice('Đã cập nhật mật khẩu thành công. Đang chuyển sang Admin...');
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetMode(false);
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
     }
+    setBusy(false);
   };
 
   if (loading) return <div className="min-h-screen grid place-items-center bg-[#F6F7F5]">Đang kiểm tra phiên đăng nhập...</div>;
@@ -125,33 +134,38 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen grid place-items-center bg-[#F6F7F5] p-6"><div className="max-w-md bg-white rounded-2xl border p-6"><h1 className="font-semibold text-lg">Chưa cấu hình Supabase</h1><p className="text-sm text-gray-600 mt-2">Kiểm tra VITE_SUPABASE_URL và VITE_SUPABASE_PUBLISHABLE_KEY trong Environment Variables của Vercel, sau đó deploy lại.</p></div></div>;
   }
 
-  if (!session) {
-    return <div className="min-h-screen bg-[#F6F7F5] flex items-center justify-center p-5"><div className="w-full max-w-md bg-white border border-[#E8EBE7] rounded-2xl p-8 shadow-sm">
+  if (resetMode) {
+    if (!session) {
+      return <div className="min-h-screen grid place-items-center bg-[#F6F7F5] p-6"><div className="max-w-md bg-white rounded-2xl border p-6"><h1 className="font-semibold text-lg">Link khôi phục chưa hợp lệ</h1><p className="text-sm text-gray-600 mt-2">Phiên khôi phục chưa được xác thực hoặc link đã hết hạn. Hãy mở lại email recovery mới nhất.</p>{error && <p role="alert" className="text-sm text-red-600 mt-3">{error}</p>}</div></div>;
+    }
+    return <div className="min-h-screen bg-[#F6F7F5] flex items-center justify-center p-5"><form onSubmit={updatePassword} className="w-full max-w-md bg-white border border-[#E8EBE7] rounded-2xl p-8 shadow-sm">
       <div className="w-12 h-12 rounded-xl bg-[#D5B98C] text-[#1F3029] grid place-items-center font-bold text-xl">G</div>
       <p className="text-xs tracking-[0.2em] text-[#9A8769] mt-6">GIAO THỜI · MARKETING AI</p>
-      <h1 className="text-2xl font-semibold text-[#202923] mt-2">{resetMode ? 'Khôi phục quyền truy cập' : 'Đăng nhập hệ thống'}</h1>
-      <p className="text-sm text-gray-500 mt-2 mb-6">{resetMode ? 'Chức năng khôi phục một lần dành riêng cho tài khoản quản trị đã cấu hình.' : 'Sử dụng tài khoản email được Admin cấp.'}</p>
-      {resetMode ? <form onSubmit={resetPassword}>
-        <label className="block text-sm font-medium mb-2">Mã khôi phục</label>
-        <input type="password" autoComplete="off" required value={resetToken} onChange={(e) => setResetToken(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
-        <label className="block text-sm font-medium mb-2">Mật khẩu mới (ít nhất 12 ký tự)</label>
-        <input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
-        <label className="block text-sm font-medium mb-2">Nhập lại mật khẩu mới</label>
-        <input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
-        {resetMessage && <p role="status" className="text-sm text-green-700 mb-4">{resetMessage}</p>}
-        {error && <p role="alert" className="text-sm text-red-600 mb-4">{error}</p>}
-        <button disabled={busy} className="w-full rounded-lg bg-[#1F3029] text-white py-3 font-medium disabled:opacity-60">{busy ? 'Đang cập nhật...' : 'Đặt lại mật khẩu'}</button>
-        <button type="button" onClick={() => { setResetMode(false); setError(''); setResetMessage(''); }} className="w-full mt-4 text-sm underline">Quay lại đăng nhập</button>
-      </form> : <form onSubmit={signIn}>
-        <label className="block text-sm font-medium mb-2">Email</label>
-        <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
-        <label className="block text-sm font-medium mb-2">Mật khẩu</label>
-        <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
-        {error && <p role="alert" className="text-sm text-red-600 mb-4">{error}</p>}
-        <button disabled={busy} className="w-full rounded-lg bg-[#1F3029] text-white py-3 font-medium disabled:opacity-60">{busy ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
-        <button type="button" onClick={() => { setResetMode(true); setError(''); }} className="w-full mt-4 text-sm underline">Không nhớ mật khẩu? Khôi phục quyền truy cập</button>
-      </form>}
-    </div></div>;
+      <h1 className="text-2xl font-semibold text-[#202923] mt-2">Đặt mật khẩu mới</h1>
+      <p className="text-sm text-gray-500 mt-2 mb-6">Tạo mật khẩu mới cho tài khoản quản trị của bạn.</p>
+      <label className="block text-sm font-medium mb-2">Mật khẩu mới (ít nhất 12 ký tự)</label>
+      <input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
+      <label className="block text-sm font-medium mb-2">Nhập lại mật khẩu mới</label>
+      <input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
+      {error && <p role="alert" className="text-sm text-red-600 mb-4">{error}</p>}
+      {notice && <p role="status" className="text-sm text-green-700 mb-4">{notice}</p>}
+      <button disabled={busy} className="w-full rounded-lg bg-[#1F3029] text-white py-3 font-medium disabled:opacity-60">{busy ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}</button>
+    </form></div>;
+  }
+
+  if (!session) {
+    return <div className="min-h-screen bg-[#F6F7F5] flex items-center justify-center p-5"><form onSubmit={signIn} className="w-full max-w-md bg-white border border-[#E8EBE7] rounded-2xl p-8 shadow-sm">
+      <div className="w-12 h-12 rounded-xl bg-[#D5B98C] text-[#1F3029] grid place-items-center font-bold text-xl">G</div>
+      <p className="text-xs tracking-[0.2em] text-[#9A8769] mt-6">GIAO THỜI · MARKETING AI</p>
+      <h1 className="text-2xl font-semibold text-[#202923] mt-2">Đăng nhập hệ thống</h1>
+      <p className="text-sm text-gray-500 mt-2 mb-6">Sử dụng tài khoản email được Admin cấp.</p>
+      <label className="block text-sm font-medium mb-2">Email</label>
+      <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
+      <label className="block text-sm font-medium mb-2">Mật khẩu</label>
+      <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
+      {error && <p role="alert" className="text-sm text-red-600 mb-4">{error}</p>}
+      <button disabled={busy} className="w-full rounded-lg bg-[#1F3029] text-white py-3 font-medium disabled:opacity-60">{busy ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
+    </form></div>;
   }
 
   if (rolesLoading) return <div className="min-h-screen grid place-items-center bg-[#F6F7F5]">Đang kiểm tra quyền truy cập...</div>;
