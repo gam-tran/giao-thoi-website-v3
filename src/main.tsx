@@ -21,7 +21,10 @@ if (supabase) {
   };
 }
 
-const isAdmin = new URLSearchParams(window.location.search).get('admin') === '1';
+// Supabase recovery links return with tokens in the URL hash and may not include ?admin=1.
+// Route recovery callbacks through AuthGate so PASSWORD_RECOVERY can be handled securely.
+const isRecovery = window.location.hash.includes('type=recovery');
+const isAdmin = new URLSearchParams(window.location.search).get('admin') === '1' || isRecovery;
 
 createRoot(document.getElementById('root')!).render(
   isAdmin ? <AuthGate><AdminApp /></AuthGate> : <App />
