@@ -18,8 +18,19 @@ export default async function handler(req: any, res: any) {
   const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
   const secretKey = process.env.SUPABASE_SECRET_KEY || '';
 
-  if (expectedToken.length < 32 || !allowedEmail || !supabaseUrl || !secretKey) {
-    return res.status(503).json({ success: false, message: 'Password reset is not configured on the server.' });
+  const missing: string[] = [];
+  if (expectedToken.length < 32) missing.push('ADMIN_PASSWORD_RESET_TOKEN (missing or shorter than 32 characters)');
+  if (!allowedEmail) missing.push('ADMIN_PASSWORD_RESET_EMAIL');
+  if (!supabaseUrl) missing.push('SUPABASE_URL (or VITE_SUPABASE_URL)');
+  if (!secretKey) missing.push('SUPABASE_SECRET_KEY');
+
+  if (missing.length > 0) {
+    console.error('Admin password reset configuration missing:', missing);
+    return res.status(503).json({
+      success: false,
+      message: 'Password reset configuration is incomplete.',
+      missing,
+    });
   }
 
   const body = typeof req.body === 'string' ? (() => { try { return JSON.parse(req.body); } catch { return {}; } })() : (req.body || {});
