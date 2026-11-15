@@ -17,6 +17,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [resetMode, setResetMode] = useState(false);
+  const [showAdminReset, setShowAdminReset] = useState(false);
+  const [resetToken, setResetToken] = useState('');
 
   useEffect(() => {
     if (!supabase) {
@@ -100,6 +102,44 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setBusy(false);
   };
 
+  const adminResetPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setNotice('');
+    if (newPassword.length < 12 || newPassword.length > 128) {
+      setError('Mật khẩu mới phải có từ 12 đến 128 ký tự.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Hai lần nhập mật khẩu mới không khớp.');
+      return;
+    }
+    if (!resetToken) {
+      setError('Nhập mã xác nhận quản trị đã lưu trong Vercel.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), token: resetToken, password: newPassword }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Không thể đặt lại mật khẩu.');
+      setNotice('Đã đổi mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới.');
+      setPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetToken('');
+      setShowAdminReset(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể đặt lại mật khẩu.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const updatePassword = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!supabase) return;
@@ -165,6 +205,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4 outline-none focus:ring-2 focus:ring-[#D5B98C]" />
       {error && <p role="alert" className="text-sm text-red-600 mb-4">{error}</p>}
       <button disabled={busy} className="w-full rounded-lg bg-[#1F3029] text-white py-3 font-medium disabled:opacity-60">{busy ? 'Đang đăng nhập...' : 'Đăng nhập'}</button>
+      <button type="button" onClick={() => { setShowAdminReset((value) => !value); setError(''); setNotice(''); }} className="w-full mt-4 text-sm underline text-gray-600">Không đăng nhập được? Dùng mã khôi phục quản trị</button>
+      {showAdminReset && <div className="mt-5 pt-5 border-t border-gray-200">
+        <p className="text-sm text-gray-600 mb-4">Đổi mật khẩu qua xác thực quản trị phía máy chủ. Chỉ dùng cho tài khoản Admin đã cấu hình.</p>
+        <label className="block text-sm font-medium mb-2">Mã khôi phục quản trị</label>
+        <input type="password" autoComplete="off" required value={resetToken} onChange={(e) => setResetToken(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4" />
+        <label className="block text-sm font-medium mb-2">Mật khẩu mới (ít nhất 12 ký tự)</label>
+        <input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4" />
+        <label className="block text-sm font-medium mb-2">Nhập lại mật khẩu mới</label>
+        <input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full border rounded-lg px-3 py-3 mb-4" />
+        <button type="button" disabled={busy} onClick={(event) => { void adminResetPassword(event as unknown as React.FormEvent); }} className="w-full rounded-lg bg-[#1F3029] text-white py-3 font-medium disabled:opacity-60">{busy ? 'Đang cập nhật...' : 'Đổi mật khẩu Admin'}</button>
+      </div>}
+      {error && <p role="alert" className="text-sm text-red-600 mt-4">{error}</p>}
+      {notice && <p role="status" className="text-sm text-green-700 mt-4">{notice}</p>}
     </form></div>;
   }
 
