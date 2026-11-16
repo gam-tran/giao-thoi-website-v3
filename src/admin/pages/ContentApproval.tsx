@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { getContentQualityIssues } from '../utils/contentQuality';
 
 type ContentItem = {
   id?: number;
@@ -98,6 +99,15 @@ const ContentApproval: React.FC = () => {
     contentId: string,
     status: 'Approved' | 'Rejected'
   ) => {
+    if (status === 'Approved') {
+      const item = contents.find(content => content.contentId === contentId);
+      const issues = getContentQualityIssues(item?.content || '');
+      if (issues.length > 0) {
+        setError('Chưa thể duyệt bài viết này: ' + issues.join(' ') + ' Hãy quay lại Content Studio để chỉnh sửa hoặc tạo lại nội dung.');
+        return;
+      }
+    }
+
     try {
       setUpdating(contentId);
       setError('');
