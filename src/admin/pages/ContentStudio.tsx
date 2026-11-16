@@ -12,12 +12,24 @@ import {
   Check,
   AlertCircle,
   WandSparkles,
+  Upload,
+  X,
+  Image as ImageIcon,
+  Film,
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const CONTENT_API_URL = '/api/n8n/giaothoi-content-studio';
 const SAVE_API_URL = '/api/n8n/giaothoi-content-library-save';
 
-type ContentRequest = {
+type SelectedMedia = { file: File; previewUrl: string };
+type StoredMedia = { name: string; type: 'image' | 'video'; mimeType: string; size: number; path: string; order: number };
+
+const MAX_MEDIA_FILES = 10;
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+
+ type ContentRequest = {
   product: string;
   platform: string;
   contentType: string;
@@ -74,6 +86,7 @@ export default function ContentStudio() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savedContentId, setSavedContentId] = useState('');
+  const [selectedMedia, setSelectedMedia] = useState<SelectedMedia[]>([]);
 
   const updateField = (
     field: keyof ContentRequest,
@@ -137,6 +150,38 @@ export default function ContentStudio() {
     }
   };
 
+  const addMedia = (files: FileList | null) => {
+    if (!files) return;
+    const incoming = Array.from(files);
+    const accepted: SelectedMedia[] = [];
+    for (const file of incoming) {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      if (!isImage && !isVideo) {
+        setError(`Không hỗ trợ định dạng: ${file.name}`);
+        continue;
+      }
+      const limit = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
+      if (file.size > limit) {
+        setError(`${file.name} vượt quá giới hạn ${isImage ? '10 MB' : '100 MB'}.`);
+        continue;
+      }
+      accepted.push({ file, previewUrl: URL.createObjectURL(file) });
+    }
+    const remaining = MAX_MEDIA_FILES - selectedMedia.length;
+    if (accepted.length > remaining) {
+      accepted.slice(remaining).forEach(item => URL.revokeObjectURL(item.previewUrl));
+      setError(`Mỗi bài tối đa ${MAX_MEDIA_FILES} file.`);
+    }
+    setSelectedMedia([...selectedMedia, ...accepted.slice(0, remaining)]);
+  };
+
+  const removeMedia = (index: number) => {
+    const target = selectedMedia[index];
+    if (target) URL.revokeObjectURL(target.previewUrl);
+    setSelectedMedia(selectedMedia.filter((_, itemIndex) => itemIndex !== index));
+  };
+
   const copyContent = async () => {
     if (!draft) return;
 
@@ -158,11 +203,41 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
   setSavedContentId('');
 
   try {
+    if (!supabase) throw new Error('Chưa cấu hình kết nối Supabase.');
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      throw new Error('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.');
+    }
+
     const contentId = `GT-${Date.now()}`;
+    const mediaMetadata: StoredMedia[] = [];
+
+    for (let index = 0; index < selectedMedia.length; index += 1) {
+      const item = selectedMedia[index];
+      const safeName = item.file.name.normalize('NFKD').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-');
+      const path = `${contentId}/${Date.now()}-${index}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('content-media')
+        .upload(path, item.file, { contentType: item.file.type, upsert: false });
+      if (uploadError) {
+        throw new Error(`Không tải được ${item.file.name}: ${uploadError.message}`);
+      }
+      mediaMetadata.push({
+        name: item.file.name,
+        type: item.file.type.startsWith('video/') ? 'video' : 'image',
+        mimeType: item.file.type,
+        size: item.file.size,
+        path,
+        order: index,
+      });
+    }
 
     const response = await fetch(SAVE_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
       body: JSON.stringify({
         contentId,
         product: form.product,
@@ -171,6 +246,7 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
         objective: form.objective,
         content: draft,
         status,
+        media: JSON.stringify(mediaMetadata),
       }),
     });
 
@@ -437,6 +513,41 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
           )}
 
           {draft && (
+            <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800">Hình ảnh & video đính kèm</h3>
+                  <p className="mt-1 text-xs text-gray-500">Tối đa {MAX_MEDIA_FILES} file · Ảnh 10 MB/file · Video 100 MB/file</p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  <Upload className="h-4 w-4" /> Thêm ảnh/video
+                  <input type="file" accept="image/*,video/*" multiple className="hidden" disabled={saving || selectedMedia.length >= MAX_MEDIA_FILES} onChange={event => { addMedia(event.target.files); event.currentTarget.value = ''; }} />
+                </label>
+              </div>
+              {selectedMedia.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {selectedMedia.map((item, index) => (
+                    <div key={`${item.file.name}-${index}`} className="relative overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                      {item.file.type.startsWith('image/') ? (
+                        <img src={item.previewUrl} alt={item.file.name} className="h-36 w-full object-cover" />
+                      ) : (
+                        <video src={item.previewUrl} controls className="h-36 w-full bg-black object-contain" />
+                      )}
+                      <div className="flex items-center gap-1.5 p-2 text-xs text-gray-600">
+                        {item.file.type.startsWith('image/') ? <ImageIcon className="h-3.5 w-3.5 shrink-0" /> : <Film className="h-3.5 w-3.5 shrink-0" />}
+                        <span className="min-w-0 flex-1 truncate" title={item.file.name}>{item.file.name}</span>
+                        <button type="button" onClick={() => removeMedia(index)} disabled={saving} aria-label={`Xóa ${item.file.name}`} className="rounded p-1 text-gray-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"><X className="h-4 w-4" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-300 px-4 py-5 text-center text-xs text-gray-500">Chưa có file đính kèm. Mày có thể thêm nhiều ảnh hoặc video vào bài viết.</div>
+              )}
+            </div>
+          )}
+
+          {draft && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
               <span className="text-xs text-gray-400">
                 Bản nháp có thể chỉnh sửa
@@ -469,6 +580,8 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
                     setDraft('');
                     setError('');
                     setSaved(false);
+                    selectedMedia.forEach(item => URL.revokeObjectURL(item.previewUrl));
+                    setSelectedMedia([]);
                   }}
                   className="text-sm font-medium text-gray-500 hover:text-red-600"
                 >
