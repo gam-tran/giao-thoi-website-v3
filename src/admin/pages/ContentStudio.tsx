@@ -207,7 +207,34 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
   setSavedContentId('');
 
   try {
+    if (!supabase) throw new Error('Chưa cấu hình kết nối Supabase.');
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData.session) {
+      throw new Error('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.');
+    }
+
     const contentId = `GT-${Date.now()}`;
+    const mediaMetadata: StoredMedia[] = [];
+
+    for (let index = 0; index < selectedMedia.length; index += 1) {
+      const item = selectedMedia[index];
+      const safeName = item.file.name.normalize('NFKD').replace(/[^\\w.-]+/g, '-').replace(/-+/g, '-');
+      const path = `${contentId}/${Date.now()}-${index}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('content-media')
+        .upload(path, item.file, { contentType: item.file.type, upsert: false });
+      if (uploadError) {
+        throw new Error(`Không tải được ${item.file.name}: ${uploadError.message}`);
+      }
+      mediaMetadata.push({
+        name: item.file.name,
+        type: item.file.type.startsWith('video/') ? 'video' : 'image',
+        mimeType: item.file.type,
+        size: item.file.size,
+        path,
+        order: index,
+      });
+    }
 
     const response = await fetch(SAVE_API_URL, {
       method: 'POST',
