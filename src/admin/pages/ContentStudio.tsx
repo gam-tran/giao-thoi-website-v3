@@ -168,22 +168,18 @@ export default function ContentStudio() {
       }
       accepted.push({ file, previewUrl: URL.createObjectURL(file) });
     }
-    setSelectedMedia(previous => {
-      const remaining = MAX_MEDIA_FILES - previous.length;
-      if (accepted.length > remaining) {
-        accepted.slice(remaining).forEach(item => URL.revokeObjectURL(item.previewUrl));
-        setError(`Mỗi bài tối đa ${MAX_MEDIA_FILES} file.`);
-      }
-      return [...previous, ...accepted.slice(0, remaining)];
-    });
+    const remaining = MAX_MEDIA_FILES - selectedMedia.length;
+    if (accepted.length > remaining) {
+      accepted.slice(remaining).forEach(item => URL.revokeObjectURL(item.previewUrl));
+      setError(`Mỗi bài tối đa ${MAX_MEDIA_FILES} file.`);
+    }
+    setSelectedMedia([...selectedMedia, ...accepted.slice(0, remaining)]);
   };
 
   const removeMedia = (index: number) => {
-    setSelectedMedia(previous => {
-      const target = previous[index];
-      if (target) URL.revokeObjectURL(target.previewUrl);
-      return previous.filter((_, itemIndex) => itemIndex !== index);
-    });
+    const target = selectedMedia[index];
+    if (target) URL.revokeObjectURL(target.previewUrl);
+    setSelectedMedia(selectedMedia.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const copyContent = async () => {
@@ -238,7 +234,10 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
 
     const response = await fetch(SAVE_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
       body: JSON.stringify({
         contentId,
         product: form.product,
