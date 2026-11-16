@@ -214,7 +214,7 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
 
     for (let index = 0; index < selectedMedia.length; index += 1) {
       const item = selectedMedia[index];
-      const safeName = item.file.name.normalize('NFKD').replace(/[^\\w.-]+/g, '-').replace(/-+/g, '-');
+      const safeName = item.file.name.normalize('NFKD').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-');
       const path = `${contentId}/${Date.now()}-${index}-${safeName}`;
       const { error: uploadError } = await supabase.storage
         .from('content-media')
