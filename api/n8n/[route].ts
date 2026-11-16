@@ -1,4 +1,4 @@
-import { authenticateRequest } from '../_lib/auth';
+import { authenticateRequest } from '../_lib/auth.js';
 
 export default async function handler(req: any, res: any) {
   const route = req.query?.route;
