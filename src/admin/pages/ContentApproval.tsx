@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
 type ContentItem = {
   id?: number;
@@ -11,6 +12,17 @@ type ContentItem = {
   content: string;
   status: string;
   approvedAt?: string;
+  media?: string | StoredMedia[];
+};
+
+type StoredMedia = {
+  name: string;
+  type: 'image' | 'video';
+  mimeType?: string;
+  size?: number;
+  path: string;
+  order?: number;
+  url?: string;
 };
 
 const LIBRARY_API = '/api/n8n/giaothoi-content-library';
@@ -43,7 +55,30 @@ const ContentApproval: React.FC = () => {
           ? data.data
           : data.data?.data || [];
 
-      setContents(rows);
+      const parsedRows: ContentItem[] = await Promise.all(rows.map(async (row: ContentItem) => {
+        let mediaItems: StoredMedia[] = [];
+        try {
+          const rawMedia = typeof row.media === 'string' ? JSON.parse(row.media) : row.media;
+          if (Array.isArray(rawMedia)) mediaItems = rawMedia;
+        } catch {
+          mediaItems = [];
+        }
+
+        const mediaWithUrls = await Promise.all(mediaItems
+          .filter(item => item && typeof item.path === 'string' && item.path)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map(async item => {
+            if (!supabase) return item;
+            const { data, error } = await supabase.storage
+              .from('content-media')
+              .createSignedUrl(item.path, 3600);
+            return error || !data?.signedUrl ? item : { ...item, url: data.signedUrl };
+          }));
+
+        return { ...row, media: mediaWithUrls };
+      }));
+
+      setContents(parsedRows);
     } catch (err) {
       setError(
         err instanceof Error
@@ -218,6 +253,36 @@ const ContentApproval: React.FC = () => {
                   {item.status}
                 </span>
               </div>
+
+              {Array.isArray(item.media) && item.media.length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase text-[#929A93]">
+                    Hình ảnh & video đính kèm
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {item.media.map((media, index) => (
+                      <div key={media.path || index} className="overflow-hidden rounded-lg border border-[#E5EAE4] bg-[#F7F8F6]">
+                        {media.url ? (
+                          media.type === 'video' ? (
+                            <video src={media.url} controls className="h-36 w-full bg-black object-contain" />
+                          ) : (
+                            <a href={media.url} target="_blank" rel="noreferrer">
+                              <img src={media.url} alt={media.name || 'Ảnh đính kèm'} className="h-36 w-full object-cover" />
+                            </a>
+                          )
+                        ) : (
+                          <div className="flex h-36 items-center justify-center px-3 text-center text-xs text-[#929A93]">
+                            Không tải được file xem trước: {media.name || 'Tệp đính kèm'}
+                          </div>
+                        )}
+                        <p className="truncate px-2 py-2 text-xs text-[#657168]" title={media.name}>
+                          {media.name || (media.type === 'video' ? 'Video' : 'Hình ảnh')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 rounded-lg bg-[#F7F8F6] p-4">
                 <p className="mb-2 text-xs font-semibold uppercase text-[#929A93]">
