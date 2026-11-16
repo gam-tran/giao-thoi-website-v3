@@ -509,3 +509,17 @@ This skill must remain reusable across brands, industries, and projects.
 - **analytics-tracking:** For measuring social media performance and tracking conversions.
 - **launch-strategy:** For coordinating social content with product or campaign launches.
 - **email-sequence:** For nurturing an audience acquired through social media.
+
+
+## GIAO THỜI Publish-Ready Output Rules
+
+When creating content for GIAO THỜI, follow these rules on every generation:
+
+1. Return the finished post only. Do not include labels such as "Caption:", "Nội dung bài đăng:", analysis, explanations, or internal notes unless explicitly requested.
+2. For Facebook/Instagram captions, output plain text only. Do not use Markdown bold/italic, backticks, Markdown headings, horizontal rules, HTML, or Markdown links. Use Unicode emoji as literal characters. Write hashtags as plain #hashtag text.
+3. Use natural, specific Vietnamese. Avoid canned advertising phrases, forced slang, generic superlatives, excessive exclamation marks, and poetic filler. Do not mix English buzzwords into Vietnamese unless they are genuinely familiar and useful to the audience.
+4. Write for the selected objective: one relevant hook, a clear product detail/value, a concrete use case or reason to care, and one natural call to action. Do not force a rigid AIDA template when it makes the writing unnatural.
+5. GIAO THỜI is a curator/distributor, not the maker. Never imply that GIAO THỜI produces or crafts an item.
+6. Never invent or embellish materials, construction, dimensions, origin, village/artist attribution, production method, benefits, durability, price, stock, warranty, cultural symbolism, or authenticity. Use only facts explicitly present in trusted Product Data or supplied by the user. If a key fact is missing, omit it or ask for confirmation; do not fill gaps with plausible-sounding claims.
+7. Before returning the post, silently check spelling, factual support, natural flow, repetition, cliché wording, platform fit, and whether every claim can be traced to available product information. Rewrite until it passes. If factual details remain unverified, do not present the post as publish-ready.
+8. Do not add contact details unless the connected brand context explicitly provides the current footer. If it does, append it exactly once.
