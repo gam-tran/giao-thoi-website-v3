@@ -18,6 +18,7 @@ import {
   Film,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { normalizeSocialPostContent, getContentQualityIssues } from '../utils/contentQuality';
 
 const CONTENT_API_URL = '/api/n8n/giaothoi-content-studio';
 const SAVE_API_URL = '/api/n8n/giaothoi-content-library-save';
@@ -134,11 +135,15 @@ export default function ContentStudio() {
         throw new Error('AI chưa trả về nội dung hợp lệ.');
       }
 
-      setDraft(
-        typeof generatedText === 'string'
-          ? generatedText
-          : JSON.stringify(generatedText, null, 2)
-      );
+      const rawDraft = typeof generatedText === 'string'
+        ? generatedText
+        : JSON.stringify(generatedText, null, 2);
+      const cleanDraft = normalizeSocialPostContent(rawDraft);
+      setDraft(cleanDraft);
+      const generationIssues = getContentQualityIssues(cleanDraft);
+      if (generationIssues.length) {
+        setError('AI đã tạo bản nháp nhưng cần rà soát trước khi lưu: ' + generationIssues.join(' '));
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -195,7 +200,14 @@ export default function ContentStudio() {
   };
 
 const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
-  if (!draft.trim()) return;
+  const cleanDraft = normalizeSocialPostContent(draft);
+  const qualityIssues = getContentQualityIssues(cleanDraft);
+  if (qualityIssues.length) {
+    setError('Chưa thể lưu/gửi duyệt. ' + qualityIssues.join(' '));
+    return;
+  }
+  if (!cleanDraft) return;
+  setDraft(cleanDraft);
 
   setSaving(true);
   setError('');
@@ -244,7 +256,7 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
         platform: form.platform,
         contentType: form.contentType,
         objective: form.objective,
-        content: draft,
+        content: cleanDraft,
         status,
         media: JSON.stringify(mediaMetadata),
       }),
