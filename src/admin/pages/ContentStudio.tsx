@@ -135,11 +135,15 @@ export default function ContentStudio() {
         throw new Error('AI chưa trả về nội dung hợp lệ.');
       }
 
-      setDraft(
-        typeof generatedText === 'string'
-          ? generatedText
-          : JSON.stringify(generatedText, null, 2)
-      );
+      const rawDraft = typeof generatedText === 'string'
+        ? generatedText
+        : JSON.stringify(generatedText, null, 2);
+      const cleanDraft = normalizeSocialPostContent(rawDraft);
+      setDraft(cleanDraft);
+      const generationIssues = getContentQualityIssues(cleanDraft);
+      if (generationIssues.length) {
+        setError('AI đã tạo bản nháp nhưng cần rà soát trước khi lưu: ' + generationIssues.join(' '));
+      }
     } catch (err) {
       setError(
         err instanceof Error
