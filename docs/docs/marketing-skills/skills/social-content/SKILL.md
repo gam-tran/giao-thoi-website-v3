@@ -70,6 +70,27 @@ Do not ask all questions mechanically. Use existing context and ask only what is
 
 ---
 
+## Publish-Ready Output and Quality Control
+
+When the user asks for a social post or caption that will be copied or published:
+
+1. Return the final post as clean, platform-ready plain text. Do not wrap the post in Markdown code fences.
+2. Do not use Markdown bold/italic markers, Markdown link syntax, HTML tags, or escaped Markdown characters in the publishable copy. Use Unicode emoji characters directly; never create emoji image URLs or Facebook CDN links.
+3. Write website links as ordinary visible URLs. Write hashtags as plain text, for example `#GiaoThoi`, not as linked hashtag markup.
+4. Keep the post itself separate from internal notes, product specifications, source notes, or explanations that are not intended for the public caption. Include product details only when they are relevant and verified.
+5. Match the selected platform, content type, objective, audience, and requested tone. A Facebook caption should read naturally on Facebook, not like a report or a website article.
+6. For GIAO THỜI, describe the brand as a distributor/curator of traditional Vietnamese products, not as the maker or artisan unless the source explicitly confirms that role.
+7. Never invent or embellish product facts, origin, materials, production techniques, dimensions, prices, availability, cultural meanings, customer reviews, or claims of authenticity. Use only supplied or retrieved product information. If a detail cannot be verified, omit it or clearly flag it for the user instead of presenting it as fact.
+8. Before returning the copy, perform a silent preflight review:
+   - spelling, Vietnamese diacritics, punctuation, and sentence flow;
+   - factual consistency with the available product information;
+   - no repeated ideas, filler phrases, awkwardly poetic wording, or unsupported superlatives;
+   - a relevant opening, clear product value, and CTA aligned with the stated objective;
+   - no leftover prompt instructions, placeholders, source links, formatting artifacts, or internal commentary.
+9. Do not claim the post is guaranteed perfect. Provide the strongest checked draft possible and explicitly flag any factual detail that still needs human confirmation.
+
+For publishable social copy, output only the final caption unless the user explicitly requests an explanation or a separate product-information section.
+
 ## Platform Quick Reference
 
 | Platform | Best For | Frequency (Starting Point) | Key Formats |
