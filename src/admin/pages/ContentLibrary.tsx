@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Search, RefreshCw, Copy, Check, AlertCircle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 type ContentItem = {
   id?: number;
@@ -11,6 +12,15 @@ type ContentItem = {
   content: string;
   status: string;
   approvedAt?: string;
+  media?: string | StoredMedia[];
+};
+
+type StoredMedia = {
+  name: string;
+  type: 'image' | 'video';
+  path: string;
+  order?: number;
+  url?: string;
 };
 
 const LIBRARY_API = '/api/n8n/giaothoi-content-library';
@@ -46,7 +56,26 @@ export default function ContentLibrary() {
       const response = await fetch(LIBRARY_API, { method: 'GET', cache: 'no-store' });
       if (!response.ok) throw new Error(`Không thể tải Content Library (HTTP ${response.status}).`);
       const payload = await response.json();
-      setItems(getRows(payload));
+      const rows = getRows(payload);
+      const rowsWithMedia: ContentItem[] = await Promise.all(rows.map(async (row) => {
+        let mediaItems: StoredMedia[] = [];
+        try {
+          const rawMedia = typeof row.media === 'string' ? JSON.parse(row.media) : row.media;
+          if (Array.isArray(rawMedia)) mediaItems = rawMedia;
+        } catch {
+          mediaItems = [];
+        }
+        const mediaWithUrls = await Promise.all(mediaItems
+          .filter(media => media && typeof media.path === 'string' && media.path)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map(async media => {
+            if (!supabase) return media;
+            const { data, error } = await supabase.storage.from('content-media').createSignedUrl(media.path, 3600);
+            return error || !data?.signedUrl ? media : { ...media, url: data.signedUrl };
+          }));
+        return { ...row, media: mediaWithUrls };
+      }));
+      setItems(rowsWithMedia);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Có lỗi khi tải thư viện nội dung.');
     } finally {
@@ -190,6 +219,22 @@ export default function ContentLibrary() {
                 </span>
               </div>
               <p className="mt-3 text-xs text-[#737E75]">Mục tiêu: {item.objective || 'Chưa xác định'}</p>
+              {Array.isArray(item.media) && item.media.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {item.media.map((media, index) => (
+                    <div key={media.path || index} className="overflow-hidden rounded-lg border border-[#E5EAE4] bg-[#F7F8F6]">
+                      {media.url ? (
+                        media.type === 'video' ? (
+                          <video src={media.url} controls className="h-24 w-full bg-black object-contain" />
+                        ) : (
+                          <a href={media.url} target="_blank" rel="noreferrer"><img src={media.url} alt={media.name || 'Ảnh đính kèm'} className="h-24 w-full object-cover" /></a>
+                        )
+                      ) : <div className="flex h-24 items-center justify-center px-2 text-center text-[11px] text-[#929A93]">Không tải được file</div>}
+                      <p className="truncate px-2 py-1.5 text-[11px] text-[#657168]" title={media.name}>{media.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#46534A]">
                 {item.content.length > 260 ? `${item.content.slice(0, 260)}…` : item.content}
               </p>
@@ -223,6 +268,25 @@ export default function ContentLibrary() {
               </div>
               <button onClick={() => setSelectedId(null)} className="rounded-lg px-3 py-1.5 text-sm text-[#647067] hover:bg-gray-100">Đóng</button>
             </div>
+            {Array.isArray(selectedItem.media) && selectedItem.media.length > 0 && (
+              <div className="mt-4">
+                <h3 className="mb-2 text-sm font-semibold text-[#46534A]">Hình ảnh & video đính kèm</h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {selectedItem.media.map((media, index) => (
+                    <div key={media.path || index} className="overflow-hidden rounded-lg border border-[#E5EAE4] bg-[#F7F8F6]">
+                      {media.url ? (
+                        media.type === 'video' ? (
+                          <video src={media.url} controls className="h-36 w-full bg-black object-contain" />
+                        ) : (
+                          <a href={media.url} target="_blank" rel="noreferrer"><img src={media.url} alt={media.name || 'Ảnh đính kèm'} className="h-36 w-full object-cover" /></a>
+                        )
+                      ) : <div className="flex h-36 items-center justify-center px-3 text-center text-xs text-[#929A93]">Không tải được file xem trước</div>}
+                      <p className="truncate px-2 py-2 text-xs text-[#657168]" title={media.name}>{media.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-4 whitespace-pre-wrap rounded-xl bg-[#F7F8F6] p-4 text-sm leading-7 text-[#46534A]">
               {selectedItem.content}
             </div>
