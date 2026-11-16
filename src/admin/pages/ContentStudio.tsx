@@ -18,6 +18,7 @@ import {
   Film,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { normalizeSocialPostContent, getContentQualityIssues } from '../utils/contentQuality';
 
 const CONTENT_API_URL = '/api/n8n/giaothoi-content-studio';
 const SAVE_API_URL = '/api/n8n/giaothoi-content-library-save';
@@ -195,7 +196,7 @@ export default function ContentStudio() {
   };
 
 const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
-  if (!draft.trim()) return;
+  const cleanDraft = normalizeSocialPostContent(draft);\n  const qualityIssues = getContentQualityIssues(cleanDraft);\n  if (qualityIssues.length) {\n    setError('Chưa thể lưu/gửi duyệt. ' + qualityIssues.join(' '));\n    return;\n  }\n  if (!cleanDraft) return;\n  setDraft(cleanDraft);
 
   setSaving(true);
   setError('');
@@ -244,7 +245,7 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
         platform: form.platform,
         contentType: form.contentType,
         objective: form.objective,
-        content: draft,
+        content: cleanDraft,
         status,
         media: JSON.stringify(mediaMetadata),
       }),
