@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { getContentQualityIssues } from '../utils/contentQuality';
 import { supabase } from '../../lib/supabase';
 
 type ContentItem = {
@@ -99,6 +100,14 @@ const ContentApproval: React.FC = () => {
     status: 'Approved' | 'Rejected'
   ) => {
     try {
+      if (status === 'Approved') {
+        const item = contents.find(entry => entry.contentId === contentId);
+        const issues = getContentQualityIssues(item?.content || '');
+        if (issues.length) {
+          setError('Chưa thể duyệt bài. Cần rà soát: ' + issues.join(' '));
+          return;
+        }
+      }
       setUpdating(contentId);
       setError('');
 
