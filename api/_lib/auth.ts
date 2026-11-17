@@ -32,9 +32,16 @@ export async function authenticateRequest(req: any, res: any, allowedRoles: AppR
       return null;
     }
 
+    // Use the server-only service-role key for the role lookup when configured.
+    // This prevents user_roles RLS from blocking verification of a valid signed-in user.
+    const roleLookupKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const rolesResponse = await fetch(
       `${supabaseUrl}/rest/v1/user_roles?select=role&user_id=eq.${encodeURIComponent(user.id)}`,
-      { headers: { apikey: publishableKey, Authorization: `Bearer ${token}` } },
+      {
+        headers: roleLookupKey
+          ? { apikey: roleLookupKey, Authorization: `Bearer ${roleLookupKey}` }
+          : { apikey: publishableKey, Authorization: `Bearer ${token}` },
+      },
     );
     if (!rolesResponse.ok) {
       res.status(403).json({ success: false, message: 'Unable to verify user permissions' });
