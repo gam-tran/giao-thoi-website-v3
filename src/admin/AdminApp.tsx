@@ -125,7 +125,16 @@ type AppRole = 'admin' | 'creator' | 'approver' | 'publisher';
 type AdminAppProps = { userEmail: string; roles: AppRole[]; onSignOut: () => void };
 
 const AdminApp: React.FC<AdminAppProps> = ({ userEmail, roles, onSignOut }) => {
-  const [activePage, setActivePage] = useState<AdminPage>('dashboard');
+  const [activePage, setActivePage] = useState<AdminPage>(() => {
+    try {
+      const savedPage = window.sessionStorage.getItem('giaothoi-admin-active-page');
+      return navigation.some((item) => item.id === savedPage)
+        ? (savedPage as AdminPage)
+        : 'dashboard';
+    } catch {
+      return 'dashboard';
+    }
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [data, setData] = useState<DashboardResponse | null>(null);
@@ -167,6 +176,15 @@ const AdminApp: React.FC<AdminAppProps> = ({ userEmail, roles, onSignOut }) => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Restore the last Admin section when the browser tab reloads or returns to this app.
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('giaothoi-admin-active-page', activePage);
+    } catch {
+      // Keep navigation usable even when session storage is unavailable.
+    }
+  }, [activePage]);
 
   const visibleNavigation = navigation.filter((item) => roles.some((role) => item.roles.includes(role)));
   const visiblePageIds = visibleNavigation.map((item) => item.id);
