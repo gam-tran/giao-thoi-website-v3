@@ -485,34 +485,49 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
               </p>
             </div>
 
-            {draft && (
-              <div className="flex flex-wrap items-center gap-2">
-                {!isEditingDraft ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {!draft && !isEditingDraft && (
+                <button
+                  type="button"
+                  onClick={() => { setOriginalDraft(''); setDraft(''); setIsEditingDraft(true); setError(''); }}
+                  className="flex shrink-0 items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-100"
+                >
+                  <FileText className="h-4 w-4" />
+                  Tự viết nội dung
+                </button>
+              )}
+              {draft && !isEditingDraft && (
+                <button
+                  type="button"
+                  onClick={() => { setOriginalDraft(draft); setIsEditingDraft(true); }}
+                  className="flex shrink-0 items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-100"
+                >
+                  Chỉnh sửa
+                </button>
+              )}
+              {isEditingDraft && (
+                <>
                   <button
                     type="button"
-                    onClick={() => { setOriginalDraft(draft); setIsEditingDraft(true); }}
-                    className="flex shrink-0 items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-100"
+                    onClick={() => {
+                      setDraft(originalDraft);
+                      setIsEditingDraft(false);
+                    }}
+                    className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
                   >
-                    Chỉnh sửa
+                    Hủy
                   </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => { setDraft(originalDraft); setIsEditingDraft(false); }}
-                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setOriginalDraft(draft); setIsEditingDraft(false); }}
-                      className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700"
-                    >
-                      Lưu thay đổi
-                    </button>
-                  </>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => { setOriginalDraft(draft); setIsEditingDraft(false); }}
+                    disabled={!draft.trim()}
+                    className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Lưu thay đổi
+                  </button>
+                </>
+              )}
+              {draft && !isEditingDraft && (
                 <button
                   type="button"
                   onClick={copyContent}
@@ -530,24 +545,22 @@ const saveToLibrary = async (status: 'Draft' | 'Pending Approval') => {
                     </>
                   )}
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {draft ? (
-            isEditingDraft ? (
-              <textarea
-                autoFocus
-                value={draft}
-                onChange={(e) => { setDraft(e.target.value); setSaved(false); }}
-                className="min-h-[480px] w-full flex-1 resize-y rounded-lg border border-violet-300 bg-white p-4 text-sm leading-7 text-gray-800 outline-none ring-2 ring-violet-100 focus:border-violet-500"
-                placeholder="Chỉnh sửa nội dung tại đây..."
-              />
-            ) : (
-              <div className="min-h-[480px] w-full flex-1 whitespace-pre-wrap overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm leading-7 text-gray-800">
-                {draft}
-              </div>
-            )
+          {isEditingDraft ? (
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(e) => { setDraft(e.target.value); setSaved(false); }}
+              className="min-h-[480px] w-full flex-1 resize-y rounded-lg border border-violet-300 bg-white p-4 text-sm leading-7 text-gray-800 outline-none ring-2 ring-violet-100 focus:border-violet-500"
+              placeholder="Viết nội dung của mày tại đây..."
+            />
+          ) : draft ? (
+            <div className="min-h-[480px] w-full flex-1 whitespace-pre-wrap overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm leading-7 text-gray-800">
+              {draft}
+            </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center">
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100">
